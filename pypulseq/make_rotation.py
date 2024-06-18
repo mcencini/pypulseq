@@ -21,6 +21,6 @@ def make_rotation(rot_matrix) -> SimpleNamespace:
     """
     rotation = SimpleNamespace()
     rotation.type = "rotation"
-    rotation.rot_matrix = rot_matrix.ravel()
+    rotation.rot_matrix = rot_matrix
 
     return rotation

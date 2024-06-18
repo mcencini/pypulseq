@@ -219,7 +219,7 @@ def write(self, file_name: Union[str, Path], create_signature, remove_duplicates
             output_file.write(
                 f'extension ROTATIONS {self.get_extension_type_ID("ROTATIONS")}\n'
             )
-            id_format_str = "{:.0f} {:.0f} {:.0f} {:.0f} {:.0f} {:.0f} {:.0f} {:.0f} {:.0f} {:.0f}\n"  # Refer lines 20-21
+            id_format_str = "{:.0f} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g}\n"  # Refer lines 20-21
             for k in self.rotation_library.data:
                 s = id_format_str.format(
                     k, *self.rotation_library.data[k]

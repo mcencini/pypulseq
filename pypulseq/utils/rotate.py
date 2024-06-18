@@ -1,9 +1,11 @@
 # Rotate gradient waveforms according to provided rotation matrix
 
 import numpy as np
+import copy
 
 def rotate(grad, rot_matrix):
     grad_channels = ["gx", "gy", "gz"]
+    grad = copy.deepcopy(grad)
     
     # get length of gradient waveforms
     wave_length = []

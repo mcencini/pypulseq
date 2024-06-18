@@ -45,6 +45,7 @@ from pypulseq.make_sinc_pulse import make_sinc_pulse
 from pypulseq.make_trapezoid import make_trapezoid
 from pypulseq.sigpy_pulse_opts import SigpyPulseOpts
 from pypulseq.make_trigger import make_trigger
+from pypulseq.make_rotation import make_rotation
 from pypulseq.opts import Opts
 from pypulseq.points_to_waveform import points_to_waveform
 from pypulseq.rotate import rotate

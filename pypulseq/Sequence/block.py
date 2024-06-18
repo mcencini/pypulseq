@@ -396,8 +396,11 @@ def get_block(self, block_index: int) -> SimpleNamespace:
                 else:
                     block.trigger = {0: trigger}
             elif ext_type == "ROTATIONS":
-                rot_matrix = np.asarray(ext_data[1]).reshape(3, 3)
-                block.rot_matrix = rot_matrix
+                data = self.rotation_library.data[ext_data[1]]
+                rotation = SimpleNamespace()
+                rotation.type = "rotation"
+                rotation.rot_matrix = np.asarray(data).reshape(3, 3)
+                block.rotation = rotation
             elif ext_type in ["LABELSET", "LABELINC"]:
                 label = SimpleNamespace()
                 label.type = ext_type.lower()
