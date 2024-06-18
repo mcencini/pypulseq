@@ -1,6 +1,6 @@
 import re
 import warnings
-from pathlib import Path
+# from pathlib import Path
 from types import SimpleNamespace
 from typing import Dict, Tuple, List
 
@@ -51,6 +51,7 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
     self.rf_library = EventLibrary()
     self.shape_library = EventLibrary()
     self.trigger_library = EventLibrary()
+    self.rotation_library = EventLibrary()
 
     # Raster times
     self.grad_raster_time = self.system.grad_raster_time
@@ -191,6 +192,12 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
                 self.trigger_library = __read_events(
                     input_file, (1, 1, 1e-6, 1e-6), event_library=self.trigger_library
                 )
+            elif section[:19] == "extension ROTATIONS":
+                extension_id = int(section[19:])
+                self.set_extension_string_ID("ROTATIONS", extension_id)
+                self.rotation_library = __read_events(
+                    input_file, (1, 1, 1, 1, 1, 1, 1, 1, 1), event_library=self.rotation_library
+                )
             elif section[:18] == "extension LABELSET":
                 extension_id = int(section[18:])
                 self.set_extension_string_ID("LABELSET", extension_id)
@@ -224,7 +231,7 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
                             *self.rf_library.data[i][3:]
                         ))
 
-        # Scan through the gradient objects and update 't'-s (trapezoids) und 'g'-s (free-shape gradients)
+        # Scan through the gradient objects and update 't'-s (trapezoids) and 'g'-s (free-shape gradients)
         for i in self.grad_library.data:
             if self.grad_library.type[i] == "t":
                 if self.grad_library.data[i][1] == 0:

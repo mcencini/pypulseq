@@ -37,7 +37,7 @@ from pypulseq.block_to_events import block_to_events
 
 from version import major, minor, revision
 
-
+# TODO: update plot, remove_duplicates, waveforms, waveforms_and_times, waveforms_export
 class Sequence:
     """
     Generate sequences and read/write sequence files. This class defines properties and methods to define a complete MR
@@ -72,6 +72,7 @@ class Sequence:
         self.rf_library = EventLibrary()  # Library of RF events
         self.shape_library = EventLibrary(numpy_data=True)  # Library of compressed shapes
         self.trigger_library = EventLibrary()  # Library of trigger events
+        self.rotation_library = EventLibrary()  # Library of rotation events
 
         # =========
         # OTHER
@@ -1177,6 +1178,9 @@ class Sequence:
 
     def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         return block.register_rf_event(self, event)
+    
+    def register_rotation_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
+        return block.rotation(self, event)
 
     def remove_duplicates(self, in_place: bool = False) -> Self:
         """
