@@ -62,6 +62,36 @@ def make_radial():
 
     return seq
 
+
+def make_radial_norotext():
+    # init sequence
+    seq = Sequence()
+    
+    # init rf pulse
+    rf = pp.make_block_pulse(math.pi/2, duration=1e-3)
+    
+    # init readout
+    gread = pp.make_trapezoid('x', area=1000)
+    
+    # init angle list
+    theta = np.asarray((0.0, 30.0, 45.0, 60.0, 90.0))
+    theta = np.deg2rad(theta)
+    
+    # build sequence
+    for n in range(len(theta)):
+        seq.add_block(rf)
+    
+        # add readouts
+        seq.add_block(*pp.rotate(gread, angle=theta[n], axis="z"))
+        
+    # add 0 again
+    seq.add_block(rf)
+
+    # add readouts
+    seq.add_block(*pp.rotate(gread, angle=theta[0], axis="z"))
+
+    return seq
+
 # Test utils.rotate actually performs rotation (for plotting)
 def test_rotate_utils():
     wavein = {"gx": np.linspace(-10, 10, 5)}
@@ -140,6 +170,49 @@ def test_sequence():
     npt.assert_allclose(seq.get_block(8).rotation.rot_matrix, rotation_matrix(60.0))
     npt.assert_allclose(seq.get_block(10).rotation.rot_matrix, rotation_matrix(90.0))
     npt.assert_allclose(seq.get_block(12).rotation.rot_matrix, rotation_matrix(0.0))
+    
+    
+# Test again explicit gradient rotation
+def test_vs_rotate():
+    seq = make_radial()
+    seq2 = make_radial_norotext()
+    
+    # test waveforms()
+    waveforms = seq.waveforms()
+    waveforms2 = seq2.waveforms()
+    
+    assert len(waveforms) == len(waveforms2)
+    for n in range(len(waveforms)):
+        npt.assert_allclose(waveforms[n], waveforms2[n])
+        
+    # test waveforms_and_times()
+    waveforms_and_times = seq.waveforms_and_times()
+    waveforms_and_times2 = seq2.waveforms_and_times()
+    
+    assert len(waveforms_and_times) == len(waveforms_and_times2)
+    for n in range(len(waveforms_and_times)):
+        assert len(waveforms_and_times[n]) == len(waveforms_and_times[n])
+        for m in range(len(waveforms_and_times[n])):
+            npt.assert_allclose(waveforms_and_times[n][m], waveforms_and_times2[n][m])
+            
+    # test waveform_export
+    waveforms_export = seq.waveforms_export()
+    waveforms_export2 = seq2.waveforms_export()
+    
+    for k in waveforms_export.keys():
+        if type(waveforms_export[k]) == np.ndarray:
+            npt.assert_allclose(waveforms_export[k], waveforms_export2[k])
+        else:
+            assert waveforms_export[k] == waveforms_export2[k]
+            
+    # test k-space
+    kspace = seq.calculate_kspace()
+    kspace2 = seq2.calculate_kspace()
+    
+    for n in range(len(kspace)):
+        npt.assert_allclose(kspace[n], kspace2[n])
+
+
 
 # This "test" rewrites the expected .seq output files when SAVE_EXPECTED is
 # set in the environment variables.

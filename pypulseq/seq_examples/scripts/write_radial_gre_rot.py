@@ -2,9 +2,10 @@ import math
 import sys
 
 import numpy as np
+from tqdm import tqdm
 
 import pypulseq as pp
-
+from pypulseq import eps
 
 def _rotation_matrix(theta):
     
@@ -19,6 +20,50 @@ def _rotation_matrix(theta):
 
     return np.stack((R0, R1, R2), axis=1)  # (nangles, 3, 3)
 
+def _get_TR(seq):
+    # Calculate TE, TR
+    duration, num_blocks, event_count = seq.duration()
+
+    k_traj_adc, k_traj, t_excitation, t_refocusing, t_adc = seq.calculate_kspace()
+    t_excitation = np.asarray(t_excitation)
+
+    k_abs_adc = np.sqrt(np.sum(np.square(k_traj_adc), axis=0))
+    k_abs_echo, index_echo = np.min(k_abs_adc), np.argmin(k_abs_adc)
+    t_echo = t_adc[index_echo]
+    if k_abs_echo > eps:
+        i2check = []
+        # Check if ADC k-space trajectory has elements left and right to index_echo
+        if index_echo > 1:
+            i2check.append(index_echo - 1)
+        if index_echo < len(k_abs_adc):
+            i2check.append(index_echo + 1)
+
+        for a in range(len(i2check)):
+            v_i_to_0 = -k_traj_adc[:, index_echo]
+            v_i_to_t = k_traj_adc[:, i2check[a]] - k_traj_adc[:, index_echo]
+            # Project v_i_to_0 to v_i_to_t
+            p_vit = np.matmul(v_i_to_0, v_i_to_t) / np.square(np.linalg.norm(v_i_to_t))
+            if p_vit > 0:
+                # We have found a bracket for the echo and the proportionality coefficient is p_vit
+                t_echo = t_adc[index_echo] * (1 - p_vit) + t_adc[i2check[a]] * p_vit
+                
+    if len(t_excitation) != 0:
+        t_ex_tmp = t_excitation[t_excitation < t_echo]
+        TE = t_echo - t_ex_tmp[-1]
+    else:
+        TE = np.nan
+
+    if len(t_excitation) < 2:
+        TR = duration
+    else:
+        t_ex_tmp1 = t_excitation[t_excitation > t_echo]
+        if len(t_ex_tmp1) == 0:
+            TR = t_ex_tmp[-1] - t_ex_tmp[-2]
+        else:
+            TR = t_ex_tmp1[0] - t_ex_tmp[-1]
+            
+    return TR
+
 def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", use_rot_ext: bool = False):
     # ======
     # SETUP
@@ -29,6 +74,8 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", us
     Nr = 256 # 1 mm iso in-plane resolution
     slab_thickness = 180e-3  # slice
     Nz = 150 # 1.2 mm slice thickness
+    
+    print(f"Using rotation extension: {use_rot_ext}")
     
     # RF specs
     alpha = 10  # flip angle
@@ -77,7 +124,8 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", us
     
     # Phase encoding plan and rotation
     pe_steps = ((np.arange(Nz)) - Nz / 2) / Nz * 2
-    delta = np.pi / Nr  # Angular increment
+    # delta = np.pi / Nr  # Angular increment
+    delta = np.deg2rad(137.5) # GA
     phi = np.arange(Nr) * delta
     
     if use_rot_ext:
@@ -94,7 +142,7 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", us
     # CONSTRUCT SEQUENCE
     # ======
     # Loop over phase encodes and define sequence blocks
-    for z in range(Nz):
+    for z in tqdm(range(Nz)):
         
         # Pre-register PE events that repeat in the inner loop
         gzpre = pp.scale_grad(grad=gphase, scale=pe_steps[z])
@@ -113,18 +161,28 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", us
             
             # Slab refocusing gradient
             seq.add_block(gss_reph)
-        
-            # Read-prewinding and phase encoding gradients
-            seq.add_block(grpre, gzpre)
-            
-            # Add readout
+                    
             if use_rot_ext:
-                seq.add_block(gread, adc, pp.make_rotation(rotmat[r]))
-            else:
-                seq.add_block(*pp.rotate(gread, adc, angle=phi[r], axis="z"))
+                # Create rotation event
+                rot = pp.make_rotation(rotmat[r])
                 
-            # Rewind
-            seq.add_block(grrew, gzrew)
+                # Read-prewinding and phase encoding gradients
+                seq.add_block(grpre, gzpre, rot)
+                
+                # Add readout
+                seq.add_block(gread, adc, rot)
+                                         
+                # Rewind
+                seq.add_block(grrew, gzrew, rot)
+            else:
+                # Read-prewinding and phase encoding gradients
+                seq.add_block(*pp.rotate(grpre, gzpre, angle=phi[r], axis="z"))
+
+                # Add readout
+                seq.add_block(*pp.rotate(gread, adc, angle=phi[r], axis="z"))
+
+                # Rewind
+                seq.add_block(*pp.rotate(grrew, gzrew, angle=phi[r], axis="z"))
             
             # Spoil
             seq.add_block(gz_spoil)
@@ -140,12 +198,19 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", us
     else:
         print("Timing check failed. Error listing follows:")
         [print(e) for e in error_report]
+        
+    # ====== 
+    # CALCULATE TR FOR VISUALIZATION
+    # ======
+    TR = _get_TR(seq)
+    dt = system.grad_raster_time
+    print(f"Repetition Time [ms]: {round(TR * 1e3)}")
 
     # ======
     # VISUALIZATION
     # ======
     if plot:
-        seq.plot()
+        seq.plot(time_range=(0, 4 * TR + dt))
 
     seq.calculate_kspace()
 
@@ -166,4 +231,8 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq", us
 
 
 if __name__ == "__main__":
-    main(plot=False, write_seq=True, use_rot_ext=sys.argv[1])
+    if len(sys.argv) < 2:
+        use_rot_ext = False
+    else:
+        use_rot_ext = sys.argv[1]
+    main(plot=True, write_seq=False, use_rot_ext=use_rot_ext)

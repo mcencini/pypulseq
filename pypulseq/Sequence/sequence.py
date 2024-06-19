@@ -1119,8 +1119,8 @@ class Sequence:
                             )
                           
                     # rotate current block gradients
-                    if hasattr(block, "rot_matrix"):
-                        waveform = rotate(waveform, block.rot_matrix)
+                    if hasattr(block, "rotation"):
+                        waveform = rotate(waveform, block.rotation.rot_matrix)
                                                 
                     for x in range(len(grad_channels)):  # Gradients
                         if grad_channels[x] in waveform:
@@ -1590,9 +1590,12 @@ class Sequence:
                                     print('Warning: "empty" gradient with non-zero magnitude detected in block {}'.format(block_counter))
             
             # rotate current block gradients
-            if hasattr(block, "rot_matrix"):
-                shape_tmp = rotate(shape_tmp, block.rot_matrix)
-            
+            if hasattr(block, "rotation"):
+                time_tmp = [shape_tmp[k][0] for k in shape_tmp.keys()][0]
+                grad_tmp = {k : shape_tmp[k][1] for k in shape_tmp.keys()}
+                grad_tmp = rotate(grad_tmp, block.rotation.rot_matrix)
+                shape_tmp = {k : np.vstack((time_tmp, grad_tmp[k])) for k in grad_tmp.keys()}
+                
             for j in range(len(grad_channels)):
                 if grad_channels[j] in shape_tmp:
                     shape_pieces[j].append(shape_tmp[grad_channels[j]])
@@ -1815,17 +1818,19 @@ class Sequence:
                             g[grad_channels[x]] = 1e-3 * grad.amplitude * np.array([0, 0, 1, 1, 0])
                             
                 # rotate current block gradients
-                if hasattr(block, "rot_matrix"):
-                    g = rotate(g, block.rot_matrix)
+                if hasattr(block, "rotation"):
+                    t_tmp = list(g_t.values())[0]
+                    g = rotate(g, block.rotation.rot_matrix)
+                    g_t = {k : t_tmp for k in g.keys()}
                 
                 for ch in grad_channels:
                     if ch in g:
                         if ch == "gx":
                             gx_t_all = np.concatenate((gx_t_all, g_t[ch]))
-                            gx_all = np.concatenate((gx_all, g[x]))
+                            gx_all = np.concatenate((gx_all, g[ch]))
                         elif ch == "gy":
                             gy_t_all = np.concatenate((gy_t_all, g_t[ch]))
-                            gy_all = np.concatenate((gy_all, g[x]))
+                            gy_all = np.concatenate((gy_all, g[ch]))
                         elif ch == "gz":
                             gz_t_all = np.concatenate((gz_t_all, g_t[ch]))
                             gz_all = np.concatenate((gz_all, g[ch]))

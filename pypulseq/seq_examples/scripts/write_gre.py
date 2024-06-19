@@ -153,4 +153,4 @@ def main(plot: bool, write_seq: bool, seq_filename: str = "gre_pypulseq.seq"):
 
 
 if __name__ == "__main__":
-    main(plot=False, write_seq=True)
+    main(plot=True, write_seq=True)
