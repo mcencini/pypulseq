@@ -139,6 +139,17 @@ def set_block(self, block_index: int, *args: SimpleNamespace) -> None:
                 ext = {'type': self.get_extension_type_ID('TRIGGERS'), 'ref': event_id}
                 extensions.append(ext)
                 duration = max(duration, event.delay + event.duration)
+            elif event.type == "rotation":
+                if hasattr(event, "id"):
+                    event_id = event.id
+                else:
+                    event_id = register_rotation_event(self, event)
+
+                ext = {
+                    "type": self.get_extension_type_ID("ROTATIONS"), 
+                    "ref": event_id
+                }
+                extensions.append(ext)
             elif event.type in ['labelset', 'labelinc']:
                 if hasattr(event, 'id'):
                     label_id = event.id
@@ -410,6 +421,12 @@ def get_block(self, block_index: int) -> SimpleNamespace:
                     block.trigger[len(block.trigger)] = trigger
                 else:
                     block.trigger = {0: trigger}
+            elif ext_type == "ROTATIONS":
+                data = self.rotation_library.data[ext_data[1]]
+                rotation = SimpleNamespace()
+                rotation.type = "rotation"
+                rotation.rot_matrix = np.asarray(data).reshape(3, 3)
+                block.rotation = rotation
             elif ext_type in ['LABELSET', 'LABELINC']:
                 label = SimpleNamespace()
                 label.type = ext_type.lower()
@@ -683,3 +700,25 @@ def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         rf_id = self.rf_library.insert(key_id=0, new_data=data, data_type=use)
 
     return rf_id, shape_IDs
+
+
+def register_rotation_event(self, event: EventLibrary) -> int:
+    """
+    Parameters
+    ----------
+    event : SimpleNamespace
+        Rotation event to be registered.
+    Returns
+    -------
+    int
+        ID of registered rotation event.
+    """
+    data = tuple(event.rot_matrix.ravel().tolist())
+    rotation_id, found = self.rotation_library.find_or_insert(new_data=data)
+
+    # Clear block cache because Rotation was overwritten
+    # TODO: Could find only the blocks that are affected by the changes
+    if self.use_block_cache and found:
+        self.block_cache.clear()
+
+    return rotation_id

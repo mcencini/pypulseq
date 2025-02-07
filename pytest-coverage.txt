@@ -1,0 +1,91 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.7, pytest-8.3.4, pluggy-1.5.0
+rootdir: /home/local/IMAGO7/mcencini/M/PREDATOR/pypulseq
+plugins: xdist-3.6.1, cov-6.0.0, black-0.3.12, sugar-1.0.0
+collected 0 items / 20 errors
+INTERNALERROR> Traceback (most recent call last):
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqlitedb.py", line 115, in _execute
+INTERNALERROR>     return self.con.execute(sql, parameters)    # type: ignore[arg-type]
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR> sqlite3.OperationalError: no such table: coverage_schema
+INTERNALERROR> 
+INTERNALERROR> During handling of the above exception, another exception occurred:
+INTERNALERROR> 
+INTERNALERROR> Traceback (most recent call last):
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqlitedb.py", line 120, in _execute
+INTERNALERROR>     return self.con.execute(sql, parameters)    # type: ignore[arg-type]
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR> sqlite3.OperationalError: no such table: coverage_schema
+INTERNALERROR> 
+INTERNALERROR> The above exception was the direct cause of the following exception:
+INTERNALERROR> 
+INTERNALERROR> Traceback (most recent call last):
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 292, in _read_db
+INTERNALERROR>     row = db.execute_one("select version from coverage_schema")
+INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqlitedb.py", line 187, in execute_one
+INTERNALERROR>     with self.execute(sql, parameters) as cur:
+INTERNALERROR>          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/contextlib.py", line 137, in __enter__
+INTERNALERROR>     return next(self.gen)
+INTERNALERROR>            ^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqlitedb.py", line 150, in execute
+INTERNALERROR>     cur = self._execute(sql, parameters)
+INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqlitedb.py", line 138, in _execute
+INTERNALERROR>     raise DataError(f"Couldn't use data file {self.filename!r}: {msg}") from exc
+INTERNALERROR> coverage.exceptions.DataError: Couldn't use data file '/home/local/IMAGO7/mcencini/M/PREDATOR/pypulseq/.coverage.aleatico2.3668310.XeCLythx.c': no such table: coverage_schema
+INTERNALERROR> 
+INTERNALERROR> During handling of the above exception, another exception occurred:
+INTERNALERROR> 
+INTERNALERROR> Traceback (most recent call last):
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/_pytest/main.py", line 283, in wrap_session
+INTERNALERROR>     session.exitstatus = doit(config, session) or 0
+INTERNALERROR>                          ^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/_pytest/main.py", line 337, in _main
+INTERNALERROR>     config.hook.pytest_runtestloop(session=session)
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/pluggy/_hooks.py", line 513, in __call__
+INTERNALERROR>     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+INTERNALERROR>     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/pluggy/_callers.py", line 156, in _multicall
+INTERNALERROR>     teardown[0].send(outcome)
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/pytest_cov/plugin.py", line 329, in pytest_runtestloop
+INTERNALERROR>     self.cov_controller.finish()
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/pytest_cov/engine.py", line 54, in ensure_topdir_wrapper
+INTERNALERROR>     return meth(self, *args, **kwargs)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/pytest_cov/engine.py", line 275, in finish
+INTERNALERROR>     self.cov.save()
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/control.py", line 789, in save
+INTERNALERROR>     data = self.get_data()
+INTERNALERROR>            ^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/control.py", line 869, in get_data
+INTERNALERROR>     if self._collector.flush_data():
+INTERNALERROR>        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/collector.py", line 488, in flush_data
+INTERNALERROR>     self.covdata.add_lines(self.mapped_file_dict(line_data))
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 123, in _wrapped
+INTERNALERROR>     return method(self, *args, **kwargs)
+INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 494, in add_lines
+INTERNALERROR>     self._choose_lines_or_arcs(lines=True)
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 563, in _choose_lines_or_arcs
+INTERNALERROR>     with self._connect() as con:
+INTERNALERROR>          ^^^^^^^^^^^^^^^
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 343, in _connect
+INTERNALERROR>     self._open_db()
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 286, in _open_db
+INTERNALERROR>     self._read_db()
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 296, in _read_db
+INTERNALERROR>     self._init_db(db)
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqldata.py", line 325, in _init_db
+INTERNALERROR>     db.executescript(SCHEMA)
+INTERNALERROR>   File "/home/local/IMAGO7/mcencini/.conda/envs/mrbabel/lib/python3.12/site-packages/coverage/sqlitedb.py", line 226, in executescript
+INTERNALERROR>     self.con.executescript(script).close()
+INTERNALERROR>     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+INTERNALERROR> sqlite3.OperationalError: database is locked
+
+======================= 11 warnings, 20 errors in 11.53s =======================
