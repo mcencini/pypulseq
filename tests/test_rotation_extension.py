@@ -1,321 +1,384 @@
-# import os
-# import math
-# from pathlib import Path
+import os
+import math
+from pathlib import Path
 
-# import numpy as np
-# import numpy.testing as npt
+import numpy as np
+import numpy.testing as npt
 
-# import pytest
-# from unittest.mock import patch
+import pytest
+from unittest.mock import patch
 
-# from pypulseq import Sequence
-# from pypulseq.tests.base import Approx, compare_seq_file
+from pypulseq import Sequence
+import pypulseq as pp
 
-# import pypulseq as pp
-
-
-# expected_output_path = Path(__file__).parent / 'expected_output'
-
-# # Rotation Matrix creation routine
-# def rotation_matrix(angle):
-#     # angle in degrees
-#     theta = np.deg2rad(angle)
-    
-#     # R[0] = (R[0][0], R[0][1], R[0][2])
-#     R0 = np.asarray((np.cos(theta), -np.sin(theta), 0.0))
-    
-#     # R[1] = (R[1][0], R[1][1], R[1][2])
-#     R1 = np.asarray((np.sin(theta), np.cos(theta), 0.0))
-    
-#     # R[2] = (R[2][0], R[2][1], R[2][2])
-#     R2 = np.asarray((0.0, 0.0, 1.0))
-
-#     return np.stack((R0, R1, R2), axis=0)
-
-# # Basic sequence with 0, 30, 45, 60, 90 deg
-# def make_radial():
-#     # init sequence
-#     seq = Sequence()
-    
-#     # init rf pulse
-#     rf = pp.make_block_pulse(math.pi/2, duration=1e-3)
-    
-#     # init readout
-#     gread = pp.make_trapezoid('x', area=1000)
-    
-#     # init angle list
-#     theta = np.asarray((0.0, 30.0, 45.0, 60.0, 90.0))
-#     rot = [rotation_matrix(th) for th in theta]
-    
-#     # build sequence
-#     for n in range(len(theta)):
-#         seq.add_block(rf)
-    
-#         # add readouts
-#         seq.add_block(gread, pp.make_rotation(rot[n]))
-        
-#     # add 0 again
-#     seq.add_block(rf)
-
-#     # add readouts
-#     seq.add_block(gread, pp.make_rotation(rot[0]))
-
-#     return seq
+from conftest import Approx
 
 
-# def make_radial_norotext():
-#     # init sequence
-#     seq = Sequence()
-    
-#     # init rf pulse
-#     rf = pp.make_block_pulse(math.pi/2, duration=1e-3)
-    
-#     # init readout
-#     gread = pp.make_trapezoid('x', area=1000)
-    
-#     # init angle list
-#     theta = np.asarray((0.0, 30.0, 45.0, 60.0, 90.0))
-#     theta = np.deg2rad(theta)
-    
-#     # build sequence
-#     for n in range(len(theta)):
-#         seq.add_block(rf)
-    
-#         # add readouts
-#         seq.add_block(*pp.rotate(gread, angle=theta[n], axis="z"))
-        
-#     # add 0 again
-#     seq.add_block(rf)
-
-#     # add readouts
-#     seq.add_block(*pp.rotate(gread, angle=theta[0], axis="z"))
-
-#     return seq
-
-# # Test utils.rotate actually performs rotation (for plotting)
-# def test_rotate_utils():
-#     wavein = {"gx": np.linspace(-10, 10, 5)}
-    
-#     # rotate by 0 deg
-#     R = rotation_matrix(0.0)
-#     waveout = pp.utils.rotate.rotate(wavein, R)
-#     npt.assert_allclose(wavein["gx"], waveout["gx"])
-#     assert "gy" not in waveout
-#     assert "gz" not in waveout
-     
-#     # rotate by 45 deg
-#     R = rotation_matrix(45.0)
-#     waveout = pp.utils.rotate.rotate(wavein, R)
-#     npt.assert_allclose(wavein["gx"] * (2**0.5 / 2), waveout["gx"])
-#     npt.assert_allclose(wavein["gx"] * (2**0.5 / 2), waveout["gy"])
-#     assert "gz" not in waveout
-    
-#     # rotate by 90 deg
-#     R = rotation_matrix(90.0)
-#     waveout = pp.utils.rotate.rotate(wavein, R)
-#     assert "gx" not in waveout
-#     npt.assert_allclose(wavein["gx"], waveout["gy"])
-#     assert "gz" not in waveout
-    
-# # Test sequence
-# def test_sequence():
-#     seq = make_radial()
-#     blocks = np.stack(list(seq.block_events.values()), axis=1)
-    
-#     # check rf
-#     rf = (1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0) # alternate between no rf and gaussian pulse
-#     npt.assert_allclose(blocks[1], rf)
-    
-#     # check gradients
-#     g = (0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1) # alternate between no readout and radial spoke
-#     npt.assert_allclose(blocks[2], g)
-    
-#     # check extension (we have 0=no rot, 1=0.0deg, 2=30.0deg, 3=45.0deg, 4=60.0deg, 5=90.0deg)
-#     ext = (0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 1) # last event re-use ROTATION[1] = 90deg rotation about z
-#     npt.assert_allclose(blocks[6], ext)
-    
-#     # verify that the only extension is ROTATIONS (id=1, string=[ROTATIONS])
-#     assert len(seq.extension_numeric_idx) == 1
-#     assert seq.extension_numeric_idx[0] == 1
-#     assert len(seq.extension_string_idx) == 1
-#     assert seq.extension_string_idx[0] == "ROTATIONS"
-    
-#     assert len(seq.extensions_library.data) == 5
-#     npt.assert_allclose(seq.extensions_library.data[1], (1, 1, 0)) 
-#     npt.assert_allclose(seq.extensions_library.data[2], (1, 2, 0)) 
-#     npt.assert_allclose(seq.extensions_library.data[3], (1, 3, 0)) 
-#     npt.assert_allclose(seq.extensions_library.data[4], (1, 4, 0)) 
-#     npt.assert_allclose(seq.extensions_library.data[5], (1, 5, 0)) 
-    
-#     # verify that rotation_events 1-5 contains the correct matrix
-#     for n in (1, 3, 5, 7, 9, 11):
-#         b = seq.get_block(n)
-#         assert b.rf is not None
-#         assert b.gx is None
-#         assert b.gy is None
-#         assert b.gz is None
-#         assert hasattr(b, "rotation") is False
-        
-#     for n in (2, 4, 6, 8, 10, 12):
-#         b = seq.get_block(n)
-#         assert b.rf is None
-#         assert b.gx is not None
-#         assert b.gy is None
-#         assert b.gz is None
-#         assert hasattr(b, "rotation") is True
-        
-#     npt.assert_allclose(seq.get_block(2).rotation.rot_matrix, rotation_matrix(0.0))
-#     npt.assert_allclose(seq.get_block(4).rotation.rot_matrix, rotation_matrix(30.0))
-#     npt.assert_allclose(seq.get_block(6).rotation.rot_matrix, rotation_matrix(45.0))
-#     npt.assert_allclose(seq.get_block(8).rotation.rot_matrix, rotation_matrix(60.0))
-#     npt.assert_allclose(seq.get_block(10).rotation.rot_matrix, rotation_matrix(90.0))
-#     npt.assert_allclose(seq.get_block(12).rotation.rot_matrix, rotation_matrix(0.0))
-    
-    
-# # Test again explicit gradient rotation
-# def test_vs_rotate():
-#     seq = make_radial()
-#     seq2 = make_radial_norotext()
-    
-#     # test waveforms()
-#     waveforms = seq.waveforms()
-#     waveforms2 = seq2.waveforms()
-    
-#     assert len(waveforms) == len(waveforms2)
-#     for n in range(len(waveforms)):
-#         npt.assert_allclose(waveforms[n], waveforms2[n])
-        
-#     # test waveforms_and_times()
-#     waveforms_and_times = seq.waveforms_and_times()
-#     waveforms_and_times2 = seq2.waveforms_and_times()
-    
-#     assert len(waveforms_and_times) == len(waveforms_and_times2)
-#     for n in range(len(waveforms_and_times)):
-#         assert len(waveforms_and_times[n]) == len(waveforms_and_times[n])
-#         for m in range(len(waveforms_and_times[n])):
-#             npt.assert_allclose(waveforms_and_times[n][m], waveforms_and_times2[n][m])
-            
-#     # test waveform_export
-#     waveforms_export = seq.waveforms_export()
-#     waveforms_export2 = seq2.waveforms_export()
-    
-#     for k in waveforms_export.keys():
-#         if type(waveforms_export[k]) == np.ndarray:
-#             npt.assert_allclose(waveforms_export[k], waveforms_export2[k])
-#         else:
-#             assert waveforms_export[k] == waveforms_export2[k]
-            
-#     # test k-space
-#     kspace = seq.calculate_kspace()
-#     kspace2 = seq2.calculate_kspace()
-    
-#     for n in range(len(kspace)):
-#         npt.assert_allclose(kspace[n], kspace2[n])
+expected_output_path = Path(__file__).parent / "expected_output"
 
 
+# Rotation Matrix creation routine
+def rotation_matrix(angle):
+    # angle in degrees
+    theta = np.deg2rad(angle)
 
-# # This "test" rewrites the expected .seq output files when SAVE_EXPECTED is
-# # set in the environment variables.
-# # E.g. in a unix-based system, run: SAVE_EXPECTED=1 pytest test_sequence.py
-# @pytest.mark.skipif(not os.environ.get('SAVE_EXPECTED'), reason='Only save sequence files when requested')
-# def test_sequence_save_expected():
+    # R[0] = (R[0][0], R[0][1], R[0][2])
+    R0 = np.asarray((np.cos(theta), -np.sin(theta), 0.0))
 
-#     # Generate sequence and write to file
-#     seq = make_radial()
-#     seq.write(expected_output_path / 'make_radial.seq')
+    # R[1] = (R[1][0], R[1][1], R[1][2])
+    R1 = np.asarray((np.sin(theta), np.cos(theta), 0.0))
+
+    # R[2] = (R[2][0], R[2][1], R[2][2])
+    R2 = np.asarray((0.0, 0.0, 1.0))
+
+    return np.stack((R0, R1, R2), axis=0)
 
 
-# # Test whether a sequence can be plotted.
-# @patch("matplotlib.pyplot.show")
-# def test_plot(mock_show):
-#     seq = make_radial()
+# Basic sequence with 0, 30, 45, 60, 90 deg
+def seq_make_radial():
+    # init sequence
+    seq = Sequence()
 
-#     seq.plot()
-#     seq.plot(show_blocks=True)
+    # init rf pulse
+    rf = pp.make_block_pulse(math.pi / 2, duration=1e-3)
 
-# # Test whether the sequence is the approximately the same after writing a .seq
-# # file and reading it back in.
-# def test_sequence_writeread(tmp_path):
-#     output_filename = tmp_path / 'make_radial.seq'
+    # init readout
+    gread = pp.make_trapezoid("x", area=1000)
 
-#     # Generate sequence
-#     seq = make_radial()
+    # init angle list
+    theta = np.asarray((0.0, 30.0, 45.0, 60.0, 90.0))
+    rot = [rotation_matrix(th) for th in theta]
 
-#     # Write sequence to file
-#     seq.write(output_filename)
+    # build sequence
+    for n in range(len(theta)):
+        seq.add_block(rf)
 
-#     # Check if written sequence file matches expected sequence file
-#     compare_seq_file(output_filename, expected_output_path / 'make_radial.seq')
-                     
-#     # Read written sequence file back in
-#     seq2 = pp.Sequence(system=seq.system)
-#     seq2.read(output_filename)
+        # add readouts
+        seq.add_block(gread, pp.make_rotation(rot[n]))
 
-#     # Clean up written sequence file
-#     output_filename.unlink()
+    # add 0 again
+    seq.add_block(rf)
 
-#     # Test for approximate equality of all blocks
-#     assert set(seq2.block_events.keys()) == set(seq.block_events.keys())
-#     for block_counter in seq.block_events:
-#         assert seq2.get_block(block_counter) == Approx(seq.get_block(block_counter), abs=1e-6, rel=1e-5), f'Block {block_counter} does not match'
+    # add readouts
+    seq.add_block(gread, pp.make_rotation(rot[0]))
 
-#     # Test for approximate equality of all gradient waveforms
-#     for a,b in zip(seq2.get_gradients(), seq.get_gradients()):
-#         if a == None and b == None:
-#             continue
-#         if a == None or b == None:
-#             assert False
+    return seq
 
-#         assert a.x == Approx(b.x, abs=1e-3, rel=1e-3)
-#         assert a.c == Approx(b.c, abs=1e-3, rel=1e-3)
 
-#     # Test for approximate equality of kspace calculation
-#     assert seq2.calculate_kspace() == Approx(seq.calculate_kspace(), abs=1e-2, nan_ok=True)
-    
-#     # Test whether labels are the same
-#     labels_seq = seq.evaluate_labels(evolution='blocks')
-#     labels_seq2 = seq2.evaluate_labels(evolution='blocks')
-    
-#     assert labels_seq.keys() == labels_seq2.keys(), 'Sequences do not contain the same set of labels'
-    
-#     for label in labels_seq:
-#         assert (labels_seq[label] == labels_seq2[label]).all(), f'Label {label} does not match'
+def seq_make_radial_norotext():
+    # init sequence
+    seq = Sequence()
 
-# # Test whether the sequence is approximately the same after recreating it by
-# # getting all blocks with get_block and inserting them into a new sequence
-# # with add_block.
-# def test_sequence_recreate(tmp_path):
-#     # Generate sequence
-#     seq = make_radial()
+    # init rf pulse
+    rf = pp.make_block_pulse(math.pi / 2, duration=1e-3)
 
-#     # Insert blocks from sequence into a new sequence
-#     seq2 = pp.Sequence(system=seq.system)
-#     for b in seq.block_events:
-#         seq2.add_block(seq.get_block(b))
+    # init readout
+    gread = pp.make_trapezoid("x", area=1000)
 
-#     # Test for approximate equality of all blocks
-#     assert set(seq2.block_events.keys()) == set(seq.block_events.keys())
-#     for block_counter in seq.block_events:
-#         assert seq2.get_block(block_counter) == Approx(seq.get_block(block_counter), abs=1e-6, rel=1e-5), f'Block {block_counter} does not match'
+    # init angle list
+    theta = np.asarray((0.0, 30.0, 45.0, 60.0, 90.0))
+    theta = np.deg2rad(theta)
 
-#     # Test for approximate equality of all gradient waveforms
-#     for a,b in zip(seq2.get_gradients(), seq.get_gradients()):
-#         if a == None and b == None:
-#             continue
-#         if a == None or b == None:
-#             assert False
+    # build sequence
+    for n in range(len(theta)):
+        seq.add_block(rf)
 
-#         assert a.x == Approx(b.x, abs=1e-4, rel=1e-4)
-#         assert a.c == Approx(b.c, abs=1e-4, rel=1e-4)
+        # add readouts
+        seq.add_block(*pp.rotate(gread, angle=theta[n], axis="z"))
 
-#     # Test for approximate equality of kspace calculation
-#     assert seq2.calculate_kspace() == Approx(seq.calculate_kspace(), abs=1e-6, nan_ok=True)
+    # add 0 again
+    seq.add_block(rf)
 
-#     # Test whether labels are the same
-#     labels_seq = seq.evaluate_labels(evolution='blocks')
-#     labels_seq2 = seq2.evaluate_labels(evolution='blocks')
-    
-#     assert labels_seq.keys() == labels_seq2.keys(), 'Sequences do not contain the same set of labels'
-    
-#     for label in labels_seq:
-#         assert (labels_seq[label] == labels_seq2[label]).all(), f'Label {label} does not match'
+    # add readouts
+    seq.add_block(*pp.rotate(gread, angle=theta[0], axis="z"))
+
+    return seq
+
+
+# Test utils.rotate actually performs rotation (for plotting)
+def test_rotate_utils():
+    wavein = {"gx": np.linspace(-10, 10, 5)}
+
+    # rotate by 0 deg
+    R = rotation_matrix(0.0)
+    waveout = pp.utils.rotate_ndarray.rotate_ndarray(wavein, R)
+    npt.assert_allclose(wavein["gx"], waveout["gx"])
+    assert "gy" not in waveout
+    assert "gz" not in waveout
+
+    # rotate by 45 deg
+    R = rotation_matrix(45.0)
+    waveout = pp.utils.rotate_ndarray.rotate_ndarray(wavein, R)
+    npt.assert_allclose(wavein["gx"] * (2**0.5 / 2), waveout["gx"])
+    npt.assert_allclose(wavein["gx"] * (2**0.5 / 2), waveout["gy"])
+    assert "gz" not in waveout
+
+    # rotate by 90 deg
+    R = rotation_matrix(90.0)
+    waveout = pp.utils.rotate_ndarray.rotate_ndarray(wavein, R)
+    assert "gx" not in waveout
+    npt.assert_allclose(wavein["gx"], waveout["gy"])
+    assert "gz" not in waveout
+
+
+# Test sequence
+def test_sequence():
+    seq = seq_make_radial()
+    blocks = np.stack(list(seq.block_events.values()), axis=1)
+
+    # check rf
+    rf = (
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+    )  # alternate between no rf and gaussian pulse
+    npt.assert_allclose(blocks[1], rf)
+
+    # check gradients
+    g = (
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+        0,
+        1,
+    )  # alternate between no readout and radial spoke
+    npt.assert_allclose(blocks[2], g)
+
+    # check extension (we have 0=no rot, 1=0.0deg, 2=30.0deg, 3=45.0deg, 4=60.0deg, 5=90.0deg)
+    ext = (
+        0,
+        1,
+        0,
+        2,
+        0,
+        3,
+        0,
+        4,
+        0,
+        5,
+        0,
+        1,
+    )  # last event re-use ROTATION[1] = 90deg rotation about z
+    npt.assert_allclose(blocks[6], ext)
+
+    # verify that the only extension is ROTATIONS (id=1, string=[ROTATIONS])
+    assert len(seq.extension_numeric_idx) == 1
+    assert seq.extension_numeric_idx[0] == 1
+    assert len(seq.extension_string_idx) == 1
+    assert seq.extension_string_idx[0] == "ROTATIONS"
+
+    assert len(seq.extensions_library.data) == 5
+    npt.assert_allclose(seq.extensions_library.data[1], (1, 1, 0))
+    npt.assert_allclose(seq.extensions_library.data[2], (1, 2, 0))
+    npt.assert_allclose(seq.extensions_library.data[3], (1, 3, 0))
+    npt.assert_allclose(seq.extensions_library.data[4], (1, 4, 0))
+    npt.assert_allclose(seq.extensions_library.data[5], (1, 5, 0))
+
+    # verify that rotation_events 1-5 contains the correct matrix
+    for n in (1, 3, 5, 7, 9, 11):
+        b = seq.get_block(n)
+        assert b.rf is not None
+        assert b.gx is None
+        assert b.gy is None
+        assert b.gz is None
+        assert hasattr(b, "rotation") is False
+
+    for n in (2, 4, 6, 8, 10, 12):
+        b = seq.get_block(n)
+        assert b.rf is None
+        assert b.gx is not None
+        assert b.gy is None
+        assert b.gz is None
+        assert hasattr(b, "rotation") is True
+
+    npt.assert_allclose(seq.get_block(2).rotation.rot_matrix, rotation_matrix(0.0))
+    npt.assert_allclose(seq.get_block(4).rotation.rot_matrix, rotation_matrix(30.0))
+    npt.assert_allclose(seq.get_block(6).rotation.rot_matrix, rotation_matrix(45.0))
+    npt.assert_allclose(seq.get_block(8).rotation.rot_matrix, rotation_matrix(60.0))
+    npt.assert_allclose(seq.get_block(10).rotation.rot_matrix, rotation_matrix(90.0))
+    npt.assert_allclose(seq.get_block(12).rotation.rot_matrix, rotation_matrix(0.0))
+
+
+# Test again explicit gradient rotation
+def test_vs_rotate():
+    seq = seq_make_radial()
+    seq2 = seq_make_radial_norotext()
+
+    # test waveforms()
+    waveforms = seq.waveforms()
+    waveforms2 = seq2.waveforms()
+
+    assert len(waveforms) == len(waveforms2)
+    for n in range(len(waveforms)):
+        npt.assert_allclose(waveforms[n], waveforms2[n])
+
+    # test waveforms_and_times()
+    waveforms_and_times = seq.waveforms_and_times()
+    waveforms_and_times2 = seq2.waveforms_and_times()
+
+    assert len(waveforms_and_times) == len(waveforms_and_times2)
+    for n in range(len(waveforms_and_times)):
+        assert len(waveforms_and_times[n]) == len(waveforms_and_times[n])
+        for m in range(len(waveforms_and_times[n])):
+            npt.assert_allclose(waveforms_and_times[n][m], waveforms_and_times2[n][m])
+
+    # test waveform_export
+    waveforms_export = seq.waveforms_export()
+    waveforms_export2 = seq2.waveforms_export()
+
+    for k in waveforms_export.keys():
+        if type(waveforms_export[k]) == np.ndarray:
+            npt.assert_allclose(waveforms_export[k], waveforms_export2[k])
+        else:
+            assert waveforms_export[k] == waveforms_export2[k]
+
+    # test k-space
+    kspace = seq.calculate_kspace()
+    kspace2 = seq2.calculate_kspace()
+
+    for n in range(len(kspace)):
+        npt.assert_allclose(kspace[n], kspace2[n])
+
+
+# This "test" rewrites the expected .seq output files when SAVE_EXPECTED is
+# set in the environment variables.
+# E.g. in a unix-based system, run: SAVE_EXPECTED=1 pytest test_sequence.py
+@pytest.mark.skipif(
+    not os.environ.get("SAVE_EXPECTED"),
+    reason="Only save sequence files when requested",
+)
+def test_sequence_save_expected():
+
+    # Generate sequence and write to file
+    seq = seq_make_radial()
+    seq.write(expected_output_path / "seq_make_radial.seq")
+
+
+# Test whether a sequence can be plotted.
+@patch("matplotlib.pyplot.show")
+def test_plot(mock_show):
+    seq = seq_make_radial()
+
+    seq.plot()
+    seq.plot(show_blocks=True)
+
+
+# Test whether the sequence is the approximately the same after writing a .seq
+# file and reading it back in.
+def test_sequence_writeread(tmp_path, compare_seq_file):
+    output_filename = tmp_path / "seq_make_radial.seq"
+
+    # Generate sequence
+    seq = seq_make_radial()
+
+    # Write sequence to file
+    seq.write(output_filename)
+
+    # Check if written sequence file matches expected sequence file
+    compare_seq_file(output_filename, expected_output_path / "seq_make_radial.seq")
+
+    # Read written sequence file back in
+    seq2 = pp.Sequence(system=seq.system)
+    seq2.read(output_filename)
+
+    # Clean up written sequence file
+    output_filename.unlink()
+
+    # Test for approximate equality of all blocks
+    assert set(seq2.block_events.keys()) == set(seq.block_events.keys())
+    for block_counter in seq.block_events:
+        assert seq2.get_block(block_counter) == Approx(
+            seq.get_block(block_counter), abs=1e-6, rel=1e-5
+        ), f"Block {block_counter} does not match"
+
+    # Test for approximate equality of all gradient waveforms
+    for a, b in zip(seq2.get_gradients(), seq.get_gradients()):
+        if a == None and b == None:
+            continue
+        if a == None or b == None:
+            assert False
+
+        assert a.x == Approx(b.x, abs=1e-3, rel=1e-3)
+        assert a.c == Approx(b.c, abs=1e-3, rel=1e-3)
+
+    # Test for approximate equality of kspace calculation
+    assert seq2.calculate_kspace() == Approx(
+        seq.calculate_kspace(), abs=1e-2, nan_ok=True
+    )
+
+    # Test whether labels are the same
+    labels_seq = seq.evaluate_labels(evolution="blocks")
+    labels_seq2 = seq2.evaluate_labels(evolution="blocks")
+
+    assert (
+        labels_seq.keys() == labels_seq2.keys()
+    ), "Sequences do not contain the same set of labels"
+
+    for label in labels_seq:
+        assert (
+            labels_seq[label] == labels_seq2[label]
+        ).all(), f"Label {label} does not match"
+
+
+# Test whether the sequence is approximately the same after recreating it by
+# getting all blocks with get_block and inserting them into a new sequence
+# with add_block.
+def test_sequence_recreate(tmp_path):
+    # Generate sequence
+    seq = seq_make_radial()
+
+    # Insert blocks from sequence into a new sequence
+    seq2 = pp.Sequence(system=seq.system)
+    for b in seq.block_events:
+        seq2.add_block(seq.get_block(b))
+
+    # Test for approximate equality of all blocks
+    assert set(seq2.block_events.keys()) == set(seq.block_events.keys())
+    for block_counter in seq.block_events:
+        assert seq2.get_block(block_counter) == Approx(
+            seq.get_block(block_counter), abs=1e-6, rel=1e-5
+        ), f"Block {block_counter} does not match"
+
+    # Test for approximate equality of all gradient waveforms
+    for a, b in zip(seq2.get_gradients(), seq.get_gradients()):
+        if a == None and b == None:
+            continue
+        if a == None or b == None:
+            assert False
+
+        assert a.x == Approx(b.x, abs=1e-4, rel=1e-4)
+        assert a.c == Approx(b.c, abs=1e-4, rel=1e-4)
+
+    # Test for approximate equality of kspace calculation
+    assert seq2.calculate_kspace() == Approx(
+        seq.calculate_kspace(), abs=1e-6, nan_ok=True
+    )
+
+    # Test whether labels are the same
+    labels_seq = seq.evaluate_labels(evolution="blocks")
+    labels_seq2 = seq2.evaluate_labels(evolution="blocks")
+
+    assert (
+        labels_seq.keys() == labels_seq2.keys()
+    ), "Sequences do not contain the same set of labels"
+
+    for label in labels_seq:
+        assert (
+            labels_seq[label] == labels_seq2[label]
+        ).all(), f"Label {label} does not match"

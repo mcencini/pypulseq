@@ -1725,23 +1725,23 @@ class Sequence:
                             )
                             g[grad_channels[x]] = 1e-3 * grad.amplitude * np.array([0, 0, 1, 1, 0])
 
-                        # rotate current block gradients
-                        if hasattr(block, "rotation"):
-                            t_tmp = list(g_t.values())[0]
-                            g = rotate_ndarray(g, block.rotation.rot_matrix)
-                            g_t = {k : t_tmp for k in g.keys()}
-        
-                        for ch in grad_channels:
-                            if ch in g:
-                                if ch == "gx":
-                                    gx_t_all = np.concatenate((gx_t_all, g_t[ch]))
-                                    gx_all = np.concatenate((gx_all, g[ch]))
-                                elif ch == "gy":
-                                    gy_t_all = np.concatenate((gy_t_all, g_t[ch]))
-                                    gy_all = np.concatenate((gy_all, g[ch]))
-                                elif ch == "gz":
-                                    gz_t_all = np.concatenate((gz_t_all, g_t[ch]))
-                                    gz_all = np.concatenate((gz_all, g[ch]))
+                # rotate current block gradients
+                if hasattr(block, "rotation"):
+                    t_tmp = list(g_t.values())[0]
+                    g = rotate_ndarray(g, block.rotation.rot_matrix)
+                    g_t = {k : t_tmp for k in g.keys()}
+    
+                for ch in grad_channels:
+                    if ch in g:
+                        if ch == "gx":
+                            gx_t_all = np.concatenate((gx_t_all, g_t[ch]))
+                            gx_all = np.concatenate((gx_all, g[ch]))
+                        elif ch == "gy":
+                            gy_t_all = np.concatenate((gy_t_all, g_t[ch]))
+                            gy_all = np.concatenate((gy_all, g[ch]))
+                        elif ch == "gz":
+                            gz_t_all = np.concatenate((gz_t_all, g_t[ch]))
+                            gz_all = np.concatenate((gz_all, g[ch]))
 
             t0 += self.block_durations[block_counter]  # "Current time" gets updated to end of block just examined
 
