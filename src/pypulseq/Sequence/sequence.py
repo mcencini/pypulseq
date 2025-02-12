@@ -34,6 +34,7 @@ from pypulseq.Sequence.read_seq import read
 from pypulseq.Sequence.write_seq import write as write_seq
 from pypulseq.supported_labels_rf_use import get_supported_labels
 from pypulseq.utils.cumsum import cumsum
+from pypulseq.utils.rotate_ndarray import rotate_ndarray
 from pypulseq.utils.tracing import format_trace, trace, trace_enabled
 
 major, minor, revision = __version__.split('.')[:3]
@@ -68,6 +69,7 @@ class Sequence:
         self.rf_library = EventLibrary()
         self.shape_library = EventLibrary(numpy_data=True)
         self.trigger_library = EventLibrary()
+        self.rotation_library = EventLibrary() # Library of rotation events
 
         # =========
         # OTHER
@@ -1025,6 +1027,7 @@ class Sequence:
                     )
 
                 grad_channels = ['gx', 'gy', 'gz']
+                waveform = {}
                 for x in range(len(grad_channels)):  # Gradients
                     if getattr(block, grad_channels[x], None) is not None:
                         grad = getattr(block, grad_channels[x])
@@ -1032,7 +1035,9 @@ class Sequence:
                             # We extend the shape by adding the first and the last points in an effort of making the
                             # display a bit less confusing...
                             time = grad.delay + np.array([0, *grad.tt, grad.shape_dur])
-                            waveform = g_factor * np.array((grad.first, *grad.waveform, grad.last))
+                            waveform[grad_channels[x]] = g_factor * np.array(
+                                (grad.first, *grad.waveform, grad.last)
+                            )
                         else:
                             time = np.array(
                                 cumsum(
@@ -1043,8 +1048,18 @@ class Sequence:
                                     grad.fall_time,
                                 )
                             )
-                            waveform = g_factor * grad.amplitude * np.array([0, 0, 1, 1, 0])
-                        fig2_subplots[x].plot(t_factor * (t0 + time), waveform)
+                            waveform[grad_channels[x]] = (
+                                g_factor * grad.amplitude * np.array([0, 0, 1, 1, 0])
+                            )
+
+                    # rotate current block gradients
+                    if hasattr(block, "rotation"):
+                        waveform = rotate_ndarray(waveform, block.rotation.rot_matrix)
+
+                    for x in range(len(grad_channels)):  # Gradients
+                        if grad_channels[x] in waveform:
+                            fig2_subplots[x].plot(t_factor * (t0 + time), waveform[grad_channels[x]])
+                            
             t0 += self.block_durations[block_counter]
 
         grad_plot_labels = ['x', 'y', 'z']
@@ -1105,6 +1120,9 @@ class Sequence:
 
     def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         return block.register_rf_event(self, event)
+    
+    def register_rotation_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
+        return block.rotation(self, event)
 
     def remove_duplicates(self, in_place: bool = False) -> Self:
         """
@@ -1430,6 +1448,7 @@ class Sequence:
 
         for block_counter in blocks:
             block = self.get_block(block_counter)
+            shape_tmp = {}
 
             for j in range(len(grad_channels)):
                 grad = getattr(block, grad_channels[j])
@@ -1449,8 +1468,7 @@ class Sequence:
                             #       https://github.com/pulseq/pulseq/blob/master/matlab/%2Bmr/restoreAdditionalShapeSamples.m
 
                             out_len[j] += len(grad.tt) + 2
-                            shape_pieces[j].append(
-                                np.array(
+                            shape_tmp[grad_channels[j]] = np.array(
                                     [
                                         curr_dur
                                         + grad.delay
@@ -1458,17 +1476,14 @@ class Sequence:
                                         np.concatenate(([grad.first], grad.waveform, [grad.last])),
                                     ]
                                 )
-                            )
                         else:  # Extended trapezoid
                             out_len[j] += len(grad.tt)
-                            shape_pieces[j].append(
-                                np.array(
+                            shape_tmp[grad_channels[j]] = np.array(
                                     [
                                         curr_dur + grad.delay + grad.tt,
                                         grad.waveform,
                                     ]
                                 )
-                            )
                     else:
                         if abs(grad.flat_time) > eps:
                             out_len[j] += 4
@@ -1483,7 +1498,7 @@ class Sequence:
                                     grad.amplitude * np.array([0, 1, 1, 0]),
                                 )
                             )
-                            shape_pieces[j].append(_temp)
+                            shape_tmp[grad_channels[j]] = _temp
                         else:
                             if abs(grad.rise_time) > eps and abs(grad.fall_time) > eps:
                                 out_len[j] += 3
@@ -1493,7 +1508,7 @@ class Sequence:
                                         grad.amplitude * np.array([0, 1, 0]),
                                     )
                                 )
-                                shape_pieces[j].append(_temp)
+                                shape_tmp[grad_channels[j]] = _temp
                             else:
                                 if abs(grad.amplitude) > eps:
                                     print(
@@ -1501,7 +1516,18 @@ class Sequence:
                                             block_counter
                                         )
                                     )
+            
+            # rotate current block gradients
+            if hasattr(block, "rotation"):
+                time_tmp = [shape_tmp[k][0] for k in shape_tmp.keys()][0]
+                grad_tmp = {k : shape_tmp[k][1] for k in shape_tmp.keys()}
+                grad_tmp = rotate_ndarray(grad_tmp, block.rotation.rot_matrix)
+                shape_tmp = {k : np.vstack((time_tmp, grad_tmp[k])) for k in grad_tmp.keys()}
 
+            for j in range(len(grad_channels)):
+                if grad_channels[j] in shape_tmp:
+                    shape_pieces[j].append(shape_tmp[grad_channels[j]])
+                    
             if block.rf is not None:  # RF
                 rf = block.rf
                 if append_RF:
@@ -1671,13 +1697,15 @@ class Sequence:
                     rf_signal_centers = np.concatenate((rf_signal_centers, [rf[ic]]))
 
                 grad_channels = ['gx', 'gy', 'gz']
+                g_t = {}
+                g = {}
                 for x in range(len(grad_channels)):  # Check each gradient channel: x, y, and z
                     if getattr(block, grad_channels[x]) is not None:
                         # If this channel is on in current block
                         grad = getattr(block, grad_channels[x])
                         if grad.type == 'grad':  # Arbitrary gradient option
                             # In place unpacking of grad.t with the starred expression
-                            g_t = (
+                            g_t[grad_channels[x]] = (
                                 t0
                                 + grad.delay
                                 + [
@@ -1686,26 +1714,34 @@ class Sequence:
                                     grad.t[-1] + grad.t[1] - grad.t[0],
                                 ]
                             )
-                            g = 1e-3 * np.array((grad.first, *grad.waveform, grad.last))
+                            g[grad_channels[x]] = 1e-3 * np.array((grad.first, *grad.waveform, grad.last))
                         else:  # Trapezoid gradient option
-                            g_t = cumsum(
+                            g_t[grad_channels[x]] = cumsum(
                                 t0,
                                 grad.delay,
                                 grad.rise_time,
                                 grad.flat_time,
                                 grad.fall_time,
                             )
-                            g = 1e-3 * grad.amplitude * np.array([0, 0, 1, 1, 0])
+                            g[grad_channels[x]] = 1e-3 * grad.amplitude * np.array([0, 0, 1, 1, 0])
 
-                        if grad.channel == 'x':
-                            gx_t_all = np.concatenate((gx_t_all, g_t))
-                            gx_all = np.concatenate((gx_all, g))
-                        elif grad.channel == 'y':
-                            gy_t_all = np.concatenate((gy_t_all, g_t))
-                            gy_all = np.concatenate((gy_all, g))
-                        elif grad.channel == 'z':
-                            gz_t_all = np.concatenate((gz_t_all, g_t))
-                            gz_all = np.concatenate((gz_all, g))
+                # rotate current block gradients
+                if hasattr(block, "rotation"):
+                    t_tmp = list(g_t.values())[0]
+                    g = rotate_ndarray(g, block.rotation.rot_matrix)
+                    g_t = {k : t_tmp for k in g.keys()}
+    
+                for ch in grad_channels:
+                    if ch in g:
+                        if ch == "gx":
+                            gx_t_all = np.concatenate((gx_t_all, g_t[ch]))
+                            gx_all = np.concatenate((gx_all, g[ch]))
+                        elif ch == "gy":
+                            gy_t_all = np.concatenate((gy_t_all, g_t[ch]))
+                            gy_all = np.concatenate((gy_all, g[ch]))
+                        elif ch == "gz":
+                            gz_t_all = np.concatenate((gz_t_all, g_t[ch]))
+                            gz_all = np.concatenate((gz_all, g[ch]))
 
             t0 += self.block_durations[block_counter]  # "Current time" gets updated to end of block just examined
 

@@ -186,6 +186,22 @@ def write(self, file_name: Union[str, Path], create_signature, remove_duplicates
                 s = id_format_str.format(k, *np.round(self.trigger_library.data[k] * np.array([1, 1, 1e6, 1e6])))
                 output_file.write(s)
             output_file.write('\n')
+            
+        if len(self.rotation_library.data) != 0:
+            output_file.write(
+                "# Extension specification for rotation events:\n"
+            )
+            output_file.write("# id RotMat[0][0] RotMat[0][1] RotMat[0][2] RotMat[1][0] RotMat[1][1] RotMat[1][2] RotMat[2][0] RotMat[2][1] RotMat[2][2]\n")
+            output_file.write(
+                f'extension ROTATIONS {self.get_extension_type_ID("ROTATIONS")}\n'
+            )
+            id_format_str = "{:.0f} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g} {:12g}\n"  # Refer lines 20-21
+            for k in self.rotation_library.data:
+                s = id_format_str.format(
+                    k, *self.rotation_library.data[k]
+                )
+                output_file.write(s)
+            output_file.write("\n")
 
         if len(self.label_set_library.data) != 0:
             labels = get_supported_labels()

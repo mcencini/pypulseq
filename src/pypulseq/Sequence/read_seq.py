@@ -50,6 +50,7 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
     self.rf_library = EventLibrary()
     self.shape_library = EventLibrary()
     self.trigger_library = EventLibrary()
+    self.rotation_library = EventLibrary()
 
     # Raster times
     self.grad_raster_time = self.system.grad_raster_time
@@ -166,6 +167,12 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
                 extension_id = int(section[18:])
                 self.set_extension_string_ID('TRIGGERS', extension_id)
                 self.trigger_library = __read_events(input_file, (1, 1, 1e-6, 1e-6), event_library=self.trigger_library)
+            elif section[:19] == "extension ROTATIONS":
+                extension_id = int(section[19:])
+                self.set_extension_string_ID("ROTATIONS", extension_id)
+                self.rotation_library = __read_events(
+                    input_file, (1, 1, 1, 1, 1, 1, 1, 1, 1), event_library=self.rotation_library
+                )
             elif section[:18] == 'extension LABELSET':
                 extension_id = int(section[18:])
                 self.set_extension_string_ID('LABELSET', extension_id)
