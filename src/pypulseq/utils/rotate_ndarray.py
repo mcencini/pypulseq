@@ -1,10 +1,12 @@
 # Rotate gradient waveforms according to provided rotation matrix
 
-import numpy as np
 import copy
 
+import numpy as np
+
+
 def rotate_ndarray(grad, rot_matrix):
-    grad_channels = ["gx", "gy", "gz"]
+    grad_channels = ['gx', 'gy', 'gz']
     grad = copy.deepcopy(grad)
 
     # get length of gradient waveforms
@@ -13,7 +15,9 @@ def rotate_ndarray(grad, rot_matrix):
         if ch in grad:
             wave_length.append(len(grad[ch]))
 
-    assert (np.unique(wave_length) != 0).sum() == 1, "All the waveform along different channels must have the same length"
+    assert (np.unique(wave_length) != 0).sum() == 1, (
+        'All the waveform along different channels must have the same length'
+    )
 
     wave_length = np.unique(wave_length)
     wave_length = wave_length[wave_length != 0].item()
@@ -26,7 +30,7 @@ def rotate_ndarray(grad, rot_matrix):
             grad[ch] = np.zeros(wave_length)
 
     # stack matrix
-    grad_mat = np.stack((grad["gx"], grad["gy"], grad["gz"]), axis=0) # (3, wave_length)
+    grad_mat = np.stack((grad['gx'], grad['gy'], grad['gz']), axis=0)  # (3, wave_length)
 
     # apply rotation
     grad_mat = rot_matrix @ grad_mat

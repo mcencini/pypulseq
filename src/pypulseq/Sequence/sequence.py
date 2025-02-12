@@ -69,7 +69,7 @@ class Sequence:
         self.rf_library = EventLibrary()
         self.shape_library = EventLibrary(numpy_data=True)
         self.trigger_library = EventLibrary()
-        self.rotation_library = EventLibrary() # Library of rotation events
+        self.rotation_library = EventLibrary()  # Library of rotation events
 
         # =========
         # OTHER
@@ -1035,9 +1035,7 @@ class Sequence:
                             # We extend the shape by adding the first and the last points in an effort of making the
                             # display a bit less confusing...
                             time = grad.delay + np.array([0, *grad.tt, grad.shape_dur])
-                            waveform[grad_channels[x]] = g_factor * np.array(
-                                (grad.first, *grad.waveform, grad.last)
-                            )
+                            waveform[grad_channels[x]] = g_factor * np.array((grad.first, *grad.waveform, grad.last))
                         else:
                             time = np.array(
                                 cumsum(
@@ -1048,18 +1046,16 @@ class Sequence:
                                     grad.fall_time,
                                 )
                             )
-                            waveform[grad_channels[x]] = (
-                                g_factor * grad.amplitude * np.array([0, 0, 1, 1, 0])
-                            )
+                            waveform[grad_channels[x]] = g_factor * grad.amplitude * np.array([0, 0, 1, 1, 0])
 
                     # rotate current block gradients
-                    if hasattr(block, "rotation"):
+                    if hasattr(block, 'rotation'):
                         waveform = rotate_ndarray(waveform, block.rotation.rot_matrix)
 
                     for x in range(len(grad_channels)):  # Gradients
                         if grad_channels[x] in waveform:
                             fig2_subplots[x].plot(t_factor * (t0 + time), waveform[grad_channels[x]])
-                            
+
             t0 += self.block_durations[block_counter]
 
         grad_plot_labels = ['x', 'y', 'z']
@@ -1120,7 +1116,7 @@ class Sequence:
 
     def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         return block.register_rf_event(self, event)
-    
+
     def register_rotation_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         return block.rotation(self, event)
 
@@ -1469,21 +1465,21 @@ class Sequence:
 
                             out_len[j] += len(grad.tt) + 2
                             shape_tmp[grad_channels[j]] = np.array(
-                                    [
-                                        curr_dur
-                                        + grad.delay
-                                        + np.concatenate(([0], grad.tt, [grad.tt[-1] + self.grad_raster_time / 2])),
-                                        np.concatenate(([grad.first], grad.waveform, [grad.last])),
-                                    ]
-                                )
+                                [
+                                    curr_dur
+                                    + grad.delay
+                                    + np.concatenate(([0], grad.tt, [grad.tt[-1] + self.grad_raster_time / 2])),
+                                    np.concatenate(([grad.first], grad.waveform, [grad.last])),
+                                ]
+                            )
                         else:  # Extended trapezoid
                             out_len[j] += len(grad.tt)
                             shape_tmp[grad_channels[j]] = np.array(
-                                    [
-                                        curr_dur + grad.delay + grad.tt,
-                                        grad.waveform,
-                                    ]
-                                )
+                                [
+                                    curr_dur + grad.delay + grad.tt,
+                                    grad.waveform,
+                                ]
+                            )
                     else:
                         if abs(grad.flat_time) > eps:
                             out_len[j] += 4
@@ -1516,18 +1512,18 @@ class Sequence:
                                             block_counter
                                         )
                                     )
-            
+
             # rotate current block gradients
-            if hasattr(block, "rotation"):
-                time_tmp = [shape_tmp[k][0] for k in shape_tmp.keys()][0]
-                grad_tmp = {k : shape_tmp[k][1] for k in shape_tmp.keys()}
+            if hasattr(block, 'rotation'):
+                time_tmp = next(shape_tmp[k][0] for k in shape_tmp)
+                grad_tmp = {k: shape_tmp[k][1] for k in shape_tmp}
                 grad_tmp = rotate_ndarray(grad_tmp, block.rotation.rot_matrix)
-                shape_tmp = {k : np.vstack((time_tmp, grad_tmp[k])) for k in grad_tmp.keys()}
+                shape_tmp = {k: np.vstack((time_tmp, grad_tmp[k])) for k in grad_tmp}
 
             for j in range(len(grad_channels)):
                 if grad_channels[j] in shape_tmp:
                     shape_pieces[j].append(shape_tmp[grad_channels[j]])
-                    
+
             if block.rf is not None:  # RF
                 rf = block.rf
                 if append_RF:
@@ -1726,20 +1722,20 @@ class Sequence:
                             g[grad_channels[x]] = 1e-3 * grad.amplitude * np.array([0, 0, 1, 1, 0])
 
                 # rotate current block gradients
-                if hasattr(block, "rotation"):
-                    t_tmp = list(g_t.values())[0]
+                if hasattr(block, 'rotation'):
+                    t_tmp = next(iter(g_t.values()))
                     g = rotate_ndarray(g, block.rotation.rot_matrix)
-                    g_t = {k : t_tmp for k in g.keys()}
-    
+                    g_t = {k: t_tmp for k in g}
+
                 for ch in grad_channels:
                     if ch in g:
-                        if ch == "gx":
+                        if ch == 'gx':
                             gx_t_all = np.concatenate((gx_t_all, g_t[ch]))
                             gx_all = np.concatenate((gx_all, g[ch]))
-                        elif ch == "gy":
+                        elif ch == 'gy':
                             gy_t_all = np.concatenate((gy_t_all, g_t[ch]))
                             gy_all = np.concatenate((gy_all, g[ch]))
-                        elif ch == "gz":
+                        elif ch == 'gz':
                             gz_t_all = np.concatenate((gz_t_all, g_t[ch]))
                             gz_all = np.concatenate((gz_all, g[ch]))
 
