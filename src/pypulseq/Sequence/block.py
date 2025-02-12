@@ -4,7 +4,6 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
-from pypulseq import eps
 from pypulseq.block_to_events import block_to_events
 from pypulseq.compress_shape import compress_shape
 from pypulseq.decompress_shape import decompress_shape
@@ -148,10 +147,7 @@ def set_block(self, block_index: int, *args: SimpleNamespace) -> None:
                 else:
                     event_id = register_rotation_event(self, event)
 
-                ext = {
-                    'type': self.get_extension_type_ID('ROTATIONS'), 
-                    'ref': event_id
-                }
+                ext = {'type': self.get_extension_type_ID('ROTATIONS'), 'ref': event_id}
                 extensions.append(ext)
             elif event.type in ['labelset', 'labelinc']:
                 if hasattr(event, 'id'):
@@ -205,7 +201,6 @@ def set_block(self, block_index: int, *args: SimpleNamespace) -> None:
     # PERFORM GRADIENT CHECKS
     # =========
     grad_check(self, block_index, check_g, duration, rot_event)
-    
 
     self.block_events[block_index] = new_block
     self.block_durations[block_index] = float(duration)
@@ -353,10 +348,10 @@ def get_block(self, block_index: int) -> SimpleNamespace:
                     block.trigger[len(block.trigger)] = trigger
                 else:
                     block.trigger = {0: trigger}
-            elif ext_type == "ROTATIONS":
+            elif ext_type == 'ROTATIONS':
                 data = self.rotation_library.data[ext_data[1]]
                 rotation = SimpleNamespace()
-                rotation.type = "rotation"
+                rotation.type = 'rotation'
                 rotation.rot_matrix = np.asarray(data).reshape(3, 3)
                 block.rotation = rotation
             elif ext_type in ['LABELSET', 'LABELINC']:

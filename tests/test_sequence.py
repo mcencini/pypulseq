@@ -7,7 +7,6 @@ from unittest.mock import patch
 import matplotlib.pyplot as plt
 import pypulseq as pp
 import pytest
-
 from pypulseq import Sequence
 
 from conftest import Approx

@@ -1,6 +1,5 @@
 import pypulseq as pp
 import pytest
-
 from scipy.spatial.transform import Rotation as R
 
 # Gradient definitions used in tests
@@ -177,9 +176,10 @@ def test_gradient_continuity_setblock7():
     seq.set_block(7, gx_startshigh)
 
     assert list(seq.block_events.keys()) == [10, 5, 7]
-    
+
 
 # TODO: Add other block functionality tests
+
 
 # Rotations
 def test_gradient_continuity_rot1():
@@ -262,26 +262,30 @@ def test_gradient_continuity_rot11():
         seq = pp.Sequence()
         seq.add_block(gx_endshigh, eye)
         seq.add_block(gx_startshigh2, eye)
-                    
+
+
 def test_gradient_continuity_rot12():
     # Non-zero, both grad are rotated by the same angle: No error
     seq = pp.Sequence()
     seq.add_block(gx_endshigh, rotmat)
     seq.add_block(gx_startshigh, rotmat)
-        
+
+
 def test_gradient_continuity_rot13():
     # Non-zero, new grad has different rotation from previous
     with pytest.raises(RuntimeError):
         seq = pp.Sequence()
         seq.add_block(gx_endshigh, eye)
         seq.add_block(gx_startshigh, rotmat)
-        
+
+
 def test_gradient_continuity_rot14():
     # Non-zero, new grad has different rotation from previous
     with pytest.raises(RuntimeError):
         seq = pp.Sequence()
         seq.add_block(gx_endshigh, rotmat)
         seq.add_block(gx_startshigh, eye)
+
 
 ## Test gradient continuity checks in set_block
 
@@ -358,8 +362,8 @@ def test_gradient_continuity_setblock_rot7():
     seq.set_block(7, gx_startshigh, eye)
 
     assert list(seq.block_events.keys()) == [10, 5, 7]
-    
-    
+
+
 def test_gradient_continuity_setblock_rot8():
     # Overwrite valid gradient with rotated gradient
     with pytest.raises(RuntimeError):
@@ -369,7 +373,8 @@ def test_gradient_continuity_setblock_rot8():
         seq.add_block(gx_startshigh, eye)
 
         seq.set_block(1, gx_endshigh, rotmat)
-        
+
+
 def test_gradient_continuity_setblock_rot9():
     # Overwrite valid gradient with rotated gradient
     with pytest.raises(RuntimeError):
@@ -379,7 +384,8 @@ def test_gradient_continuity_setblock_rot9():
         seq.add_block(gx_startshigh, eye)
 
         seq.set_block(2, gx_allhigh, rotmat)
-        
+
+
 def test_gradient_continuity_setblock_rot10():
     # Overwrite valid gradient with rotated gradient
     with pytest.raises(RuntimeError):
@@ -389,7 +395,8 @@ def test_gradient_continuity_setblock_rot10():
         seq.add_block(gx_startshigh, eye)
 
         seq.set_block(3, gx_startshigh, rotmat)
-        
+
+
 def test_gradient_continuity_setblock_rot11():
     # Overwrite valid non-rotated gradient with rotated gradient
     with pytest.raises(RuntimeError):
@@ -399,7 +406,8 @@ def test_gradient_continuity_setblock_rot11():
         seq.add_block(gx_startshigh)
 
         seq.set_block(1, gx_endshigh, rotmat)
-        
+
+
 def test_gradient_continuity_setblock_rot12():
     # Overwrite valid gradient with rotated gradient
     with pytest.raises(RuntimeError):
@@ -409,7 +417,8 @@ def test_gradient_continuity_setblock_rot12():
         seq.add_block(gx_startshigh)
 
         seq.set_block(2, gx_allhigh, rotmat)
-        
+
+
 def test_gradient_continuity_setblock_rot13():
     # Overwrite valid gradient with rotated gradient
     with pytest.raises(RuntimeError):

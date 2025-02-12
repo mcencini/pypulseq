@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+
 def make_rotation(rot_matrix: np.ndarray) -> SimpleNamespace:
     """
      Create a rotation event to instruct the interpreter to rotate
@@ -21,7 +22,7 @@ def make_rotation(rot_matrix: np.ndarray) -> SimpleNamespace:
 
     """
     rotation = SimpleNamespace()
-    rotation.type = "rotation"
+    rotation.type = 'rotation'
     rotation.rot_matrix = rot_matrix
 
     return rotation
