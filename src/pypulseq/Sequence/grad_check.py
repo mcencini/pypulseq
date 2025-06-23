@@ -1,7 +1,7 @@
 from pypulseq import eps
 
 
-def check_grad_continuity(self, block_index, check_g, duration):
+def check_grad_continuity(self, block_index, check_g, duration, rot_event):
     """
     Check if connection to the previous block is correct.
 
@@ -14,6 +14,8 @@ def check_grad_continuity(self, block_index, check_g, duration):
         axis.
     duration : float
         Current block duration.
+    rot_event : SimpleNamespace
+        Current block rotation event.
 
     Raises
     ------
@@ -28,6 +30,11 @@ def check_grad_continuity(self, block_index, check_g, duration):
 
     """
     max_slew_dt = self.system.max_slew * self.system.grad_raster_time
+
+    # Get rotation operators
+    if rot_event is not None:
+        rot_to_physical_axes = rot_event.rot_quaternion
+        rot_to_logical_axes = rot_to_physical_axes.inv()
 
     # If block has duration 0, nothing to do
     if duration > 0:
@@ -54,8 +61,16 @@ def check_grad_continuity(self, block_index, check_g, duration):
         # We now loop over axes and check connection point with previous
         # and, if required, with next gradient
         if self.next_free_block_ID > 1:
-            # TODO: add rotation of grad_check_data_prev / grad_check_data_next
+            # Rotation of grad_check_data_prev / grad_check_data_next
             # to logical axis according to current block rot_quaternion (v1.5.1)
+            if rot_event is not None:
+                self.grad_check_data_prev.last_grad_vals = rot_to_logical_axes.apply(
+                    self.grad_check_data_prev.last_grad_vals
+                )
+                self.grad_check_data_next.first_grad_vals = rot_to_logical_axes.apply(
+                    self.grad_check_data_next.first_grad_vals
+                )
+
             for ax in range(3):
                 grad_to_check = check_g[ax]
 
@@ -78,9 +93,6 @@ def check_grad_continuity(self, block_index, check_g, duration):
                         'Two consecutive gradients need to have the same amplitude at the connection point'
                     )
 
-                # TODO: add rotation to physical axis according to current block rot_quaternion
-                # before caching (v1.5.1)
-
                 # Now cache current block.
                 self.grad_check_data_prev.last_grad_vals[ax] = grad_to_check.stop[1]
                 self.grad_check_data_next.first_grad_vals[ax] = grad_to_check.start[1]
@@ -89,12 +101,19 @@ def check_grad_continuity(self, block_index, check_g, duration):
             for ax in range(3):
                 grad_to_check = check_g[ax]
 
-                # TODO: add rotation to physical axis according to current block rot_quaternion
-                # before caching (v1.5.1)
-
                 # Now cache current block.
                 self.grad_check_data_prev.last_grad_vals[ax] = grad_to_check.stop[1]
                 self.grad_check_data_next.first_grad_vals[ax] = grad_to_check.start[1]
+
+        # Rotation to physical axis according to current block rot_quaternion
+        # before caching (v1.5.1)
+        if rot_event is not None:
+            self.grad_check_data_prev.last_grad_vals = rot_to_physical_axes.apply(
+                self.grad_check_data_prev.last_grad_vals
+            )
+            self.grad_check_data_next.first_grad_vals = rot_to_physical_axes.apply(
+                self.grad_check_data_next.first_grad_vals
+            )
 
         self.grad_check_data_prev.valid_for_block_num = block_index
         self.grad_check_data_next.valid_for_block_num = block_index - 1

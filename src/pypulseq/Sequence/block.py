@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from typing import List, Tuple, Union
 
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
 from pypulseq.block_to_events import block_to_events
 from pypulseq.compress_shape import compress_shape
@@ -52,7 +53,7 @@ def set_block(self, block_index: int, *args: SimpleNamespace) -> None:
         2: SimpleNamespace(start=(0, 0), stop=(0, 0)),
     }  # Key-value mapping of index and  pairs of gradients/times
     extensions = []
-
+    rot_event = None
     for event in events:
         if not isinstance(event, float):  # If event is not a block duration
             if event.type == 'rf':
@@ -151,6 +152,17 @@ def set_block(self, block_index: int, *args: SimpleNamespace) -> None:
                     'ref': label_id,
                 }
                 extensions.append(ext)
+            # TODO: add Soft Delay
+            # TODO: add rfShim
+            elif event.type == 'rot3D':
+                rot_event = event
+                if hasattr(event, 'id'):
+                    event_id = event.id
+                else:
+                    event_id = register_rotation_event(self, event)
+
+                ext = {'type': self.get_extension_type_ID('ROTATIONS'), 'ref': event_id}
+                extensions.append(ext)
         else:
             # Floating point number given as delay
             duration = max(duration, event)
@@ -189,7 +201,7 @@ def set_block(self, block_index: int, *args: SimpleNamespace) -> None:
         new_block[6] = extension_id
 
     # Check gradient continuity
-    check_grad_continuity(self, block_index, check_g, duration)
+    check_grad_continuity(self, block_index, check_g, duration, rot_event)
 
     self.block_events[block_index] = new_block
     self.block_durations[block_index] = float(duration)
@@ -338,7 +350,17 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
 
         # TODO: RF Shim
 
-        # TODO: Rotation
+        # Unpack 3D Rotations
+        rotation_ext = raw_block.ext[:, raw_block.ext[0] == self.get_extension_type_ID('ROTATIONS')]
+        if len(rotation_ext) > 0:
+            if rotation_ext.shape[-1]:
+                raise ValueError('Only one rotation extension object per block is allowed')
+            data = self.rotation_library.data[rotation_ext[1].item()]
+            block.rotation = SimpleNamespace()
+            block.rotation.type = 'rot3D'
+            block.rotation.rot_quaternion = R.from_quat(data / np.linalg.norm(data), scalar_first=True)
+            if add_IDs:
+                block.rotation.id = rotation_ext[1].item()
 
         if trig_ext.shape[-1] + label_ext.shape[-1] != raw_block.ext.shape[-1]:
             for i in range(raw_block.ext.shape[1]):
@@ -348,6 +370,9 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
                     and ext_id != self.get_extension_type_ID('LABELSET')
                     and ext_id != self.get_extension_type_ID('RF_SHIMS')
                     and ext_id != self.get_extension_type_ID('DELAYS')
+                    # TODO: Soft Delays
+                    # TODO: RF Shim
+                    and ext_id != self.get_extension_type_ID('ROTATIONS')
                 ):
                     warnings.warn(f'Unknown extension ID {ext_id}')
 
@@ -766,3 +791,26 @@ def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         self.rf_id_to_name_map[rf_id] = event.name
 
     return rf_id, shape_IDs
+
+
+def register_rotation_event(self, event: EventLibrary) -> int:
+    """
+    Parameters
+    ----------
+    event : SimpleNamespace
+        Rotation event to be registered.
+
+    Returns
+    -------
+    int
+        ID of registered rotation event.
+    """
+    data = tuple(event.rot_quaternion.as_quat(canonical=True, scalar_first=True).tolist())
+    rotation_id, found = self.rotation_library.find_or_insert(new_data=data)
+
+    # Clear block cache because Rotation was overwritten
+    # TODO: Could find only the blocks that are affected by the changes
+    if self.use_block_cache and found:
+        self.block_cache.clear()
+
+    return rotation_id

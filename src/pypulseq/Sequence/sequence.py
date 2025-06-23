@@ -23,6 +23,8 @@ from pypulseq.check_timing import print_error_report
 from pypulseq.decompress_shape import decompress_shape
 from pypulseq.event_lib import EventLibrary
 from pypulseq.opts import Opts
+
+# from pypulseq.rotate3D import rotate3D
 from pypulseq.Sequence import block
 from pypulseq.Sequence.calc_grad_spectrum import calculate_gradient_spectrum
 from pypulseq.Sequence.calc_pns import calc_pns
@@ -65,6 +67,7 @@ class Sequence:
         self.rf_library = EventLibrary()
         self.shape_library = EventLibrary(numpy_data=True)
         self.trigger_library = EventLibrary()
+        self.rotation_library = EventLibrary()
 
         # =========
         # OTHER
@@ -973,6 +976,9 @@ class Sequence:
     def register_adc_event(self, event: EventLibrary) -> int:
         return block.register_adc_event(self, event)
 
+    def register_control_event(self, event: EventLibrary) -> int:
+        return block.register_control_event(self, event)
+
     def register_grad_event(self, event: SimpleNamespace) -> Union[int, Tuple[int, int]]:
         return block.register_grad_event(self, event)
 
@@ -981,6 +987,9 @@ class Sequence:
 
     def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         return block.register_rf_event(self, event)
+
+    def register_rotation_event(self, event: SimpleNamespace) -> int:
+        return block.register_rotation_event(self, event)
 
     def remove_duplicates(self, in_place: bool = False) -> Self:
         """
@@ -1323,6 +1332,17 @@ class Sequence:
 
         for block_counter in blocks:
             block = self.get_block(block_counter)
+
+            # if hasattr(block, 'rotation'):
+            #     block = deepcopy(block)
+
+            #     # Apply the rotation to the current block and restore the block structure
+            #     gradients = [getattr(block, ax) for ax in grad_channels if getattr(block, ax) is not None]
+            #     rotated_gradients = rotate3D(*gradients, block.rotation.rot_quaternion.as_matrix(), system=self.system)
+            #     for i in range(3):
+            #         setattr(block, grad_channels[i], None)
+            #     for i in range(len(rotated_gradients)):
+            #         setattr(block, f'g{rotated_gradients[i].channel}', rotated_gradients[i])
 
             for j in range(len(grad_channels)):
                 grad = getattr(block, grad_channels[j])
