@@ -1,4 +1,5 @@
 import math
+import warnings
 from types import SimpleNamespace
 from typing import List, Tuple, Union
 
@@ -220,6 +221,7 @@ def get_raw_block_content_IDs(self, block_index: int) -> SimpleNamespace:
             ext_data = self.extensions_library.data[next_ext_id]
             raw_block.ext.append(ext_data[:2])
             next_ext_id = ext_data[2]
+        raw_block.ext = np.stack(raw_block.ext, axis=-1)
 
     # RF
     if event_ind[1] > 0:
@@ -238,7 +240,7 @@ def get_raw_block_content_IDs(self, block_index: int) -> SimpleNamespace:
     return raw_block
 
 
-def get_block(self, block_index: int) -> SimpleNamespace:
+def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
     """
     Returns PyPulseq block at `block_index` position in `self.block_events`.
 
@@ -248,6 +250,8 @@ def get_block(self, block_index: int) -> SimpleNamespace:
     ----------
     block_index : int
         Index of PyPulseq block to be retrieved from `self.block_events`.
+    add_IDs : bool, optional
+        Add IDs to block structure. The default is `False`.
 
     Returns
     -------
@@ -269,29 +273,102 @@ def get_block(self, block_index: int) -> SimpleNamespace:
     values = [None] * len(attrs)
     for att, val in zip(attrs, values):
         setattr(block, att, val)
-    event_ind = self.block_events[block_index]
+    raw_block = get_raw_block_content_IDs(self, block_index)
 
-    if event_ind[0] > 0:  # Delay
-        delay = SimpleNamespace()
-        delay.type = 'delay'
-        delay.delay = self.delay_library.data[event_ind[0]][0]
-        block.delay = delay
+    # Extensions
+    if len(raw_block.ext) > 0:
+        # We have extensions - triggers, labels, etc.
+        # Format: ext_type, ext_id, next_ext_id
 
-    if event_ind[1] > 0:  # RF
-        if event_ind[1] in self.rf_library.type:
-            block.rf = self.rf_from_lib_data(self.rf_library.data[event_ind[1]], self.rf_library.type[event_ind[1]])
+        # Unpack trigger(s)
+        trig_ext = raw_block.ext[1, raw_block.ext[0] == self.get_extension_type_ID('TRIGGERS')]
+        if len(trig_ext) > 0:
+            trigger_types = ['output', 'trigger']
+            for i in range(trig_ext.shape[-1]):
+                data = self.trigger_library.data[trig_ext[i]]
+                trigger = SimpleNamespace()
+                trigger.type = trigger_types[int(data[0]) - 1]
+                if data[0] == 1:
+                    trigger_channels = ['osc0', 'osc1', 'ext1']
+                    trigger.channel = trigger_channels[int(data[1]) - 1]
+                elif data[0] == 2:
+                    trigger_channels = ['physio1', 'physio2']
+                    trigger.channel = trigger_channels[int(data[1]) - 1]
+                else:
+                    raise ValueError('Unsupported trigger event type')
+                trigger.delay = data[2]
+                trigger.duration = data[3]
+                if add_IDs:
+                    trigger.id = trig_ext[i]
+                # Allow for multiple triggers per block
+                if hasattr(block, 'trigger'):
+                    block.trigger[i] = trigger
+                else:
+                    block.trigger = {0: trigger}
+
+        # Unpack labels
+        lid_set = self.get_extension_type_ID('LABELSET')
+        lid_inc = self.get_extension_type_ID('LABELINC')
+        supported_labels = get_supported_labels()
+        label_ext = raw_block.ext[:, np.logical_or(raw_block.ext[0] == lid_set, raw_block.ext[0] == lid_inc)]
+        if len(label_ext) > 0:
+            for i in range(label_ext.shape[-1]):
+                label = SimpleNamespace()
+                if label_ext[0, i] == lid_set:
+                    label.type = 'labelset'
+                    data = self.label_set_library.data[label_ext[1, i]]
+                else:
+                    label.type = 'labelinc'
+                    data = self.label_inc_library.data[label_ext[1, i]]
+                label.label = supported_labels[int(data[1] - 1)]
+                label.value = data[0]
+                if add_IDs:
+                    label.id = label_ext[1, i]
+                # Allow for multiple labels per block
+                if block.label is not None:
+                    block.label[i] = label
+                else:
+                    block.label = {0: label}
+
+        # Reverse the order of labels, because extensions are saved as a reversed linked list
+        if block.label is not None:
+            block.label = dict(enumerate(reversed(block.label.values())))
+
+        # TODO: Soft Delays
+
+        # TODO: RF Shim
+
+        # TODO: Rotation
+
+        if trig_ext.shape[-1] + label_ext.shape[-1] != raw_block.ext.shape[-1]:
+            for i in range(raw_block.ext.shape[1]):
+                ext_id = raw_block.ext[0, i]
+                if (
+                    ext_id != self.get_extension_type_ID('TRIGGERS')
+                    and ext_id != self.get_extension_type_ID('LABELSET')
+                    and ext_id != self.get_extension_type_ID('RF_SHIMS')
+                    and ext_id != self.get_extension_type_ID('DELAYS')
+                ):
+                    warnings.warn(f'Unknown extension ID {ext_id}')
+
+    # RF
+    if raw_block.rf:  # RF
+        if len(self.rf_library.type) >= raw_block.rf:
+            block.rf = self.rf_from_lib_data(self.rf_library.data[raw_block.rf], self.rf_library.type[raw_block.rf])
         else:
-            block.rf = self.rf_from_lib_data(self.rf_library.data[event_ind[1]], 'u')  # Undefined type/use
-
-        # TODO: add optional rf ID from raw_block
+            block.rf = self.rf_from_lib_data(self.rf_library.data[raw_block.rf], 'u')  # Undefined type/use
+        if add_IDs:
+            block.rf.id = raw_block.rf
 
     # Gradients
     grad_channels = ['gx', 'gy', 'gz']
     for i in range(len(grad_channels)):
-        if event_ind[2 + i] > 0:
+        grad_id = getattr(raw_block, grad_channels[i])
+
+        if grad_id:
             grad, compressed = SimpleNamespace(), SimpleNamespace()
-            grad_type = self.grad_library.type[event_ind[2 + i]]
-            lib_data = self.grad_library.data[event_ind[2 + i]]
+            grad_type = self.grad_library.type[grad_id]
+            lib_data = self.grad_library.data[grad_id]
             grad.type = 'trap' if grad_type == 't' else 'grad'
             grad.channel = grad_channels[i][1]
             if grad.type == 'grad':
@@ -338,6 +415,8 @@ def get_block(self, block_index: int) -> SimpleNamespace:
                 grad.shape_dur = t_end
                 grad.first = lib_data[1]  # change in v150 - we always have first/last now
                 grad.last = lib_data[2]  # change in v150 - we always have first/last now
+                if add_IDs:
+                    grad.shape_IDs = [shape_id, time_id]
             else:
                 grad.amplitude = lib_data[0]
                 grad.rise_time = lib_data[1]
@@ -347,13 +426,14 @@ def get_block(self, block_index: int) -> SimpleNamespace:
                 grad.area = grad.amplitude * (grad.flat_time + grad.rise_time / 2 + grad.fall_time / 2)
                 grad.flat_area = grad.amplitude * grad.flat_time
 
-            # TODO: add optional grad ID from raw_block
+            if add_IDs:
+                grad.id = grad_id
 
             setattr(block, grad_channels[i], grad)
 
     # ADC
-    if event_ind[5] > 0:
-        lib_data = self.adc_library.data[event_ind[5]]
+    if raw_block.adc:
+        lib_data = self.adc_library.data[raw_block.adc]
         shape_id_phase_modulation = lib_data[-2]
         if shape_id_phase_modulation:
             shape_data = self.shape_library.data[shape_id_phase_modulation]
@@ -377,64 +457,10 @@ def get_block(self, block_index: int) -> SimpleNamespace:
         adc.num_samples = int(adc.num_samples)
         adc.type = 'adc'
 
-        # TODO: add optional adc ID from raw_block
+        if add_IDs:
+            adc.id = raw_block.adc
 
         block.adc = adc
-
-    # Extensions
-    if event_ind[6] > 0:
-        # We have extensions - triggers, labels, etc.
-        next_ext_id = event_ind[6]
-        while next_ext_id != 0:
-            ext_data = self.extensions_library.data[next_ext_id]
-            # Format: ext_type, ext_id, next_ext_id
-            ext_type = self.get_extension_type_string(ext_data[0])
-
-            if ext_type == 'TRIGGERS':
-                trigger_types = ['output', 'trigger']
-                data = self.trigger_library.data[ext_data[1]]
-                trigger = SimpleNamespace()
-                trigger.type = trigger_types[int(data[0]) - 1]
-                if data[0] == 1:
-                    trigger_channels = ['osc0', 'osc1', 'ext1']
-                    trigger.channel = trigger_channels[int(data[1]) - 1]
-                elif data[0] == 2:
-                    trigger_channels = ['physio1', 'physio2']
-                    trigger.channel = trigger_channels[int(data[1]) - 1]
-                else:
-                    raise ValueError('Unsupported trigger event type')
-
-                trigger.delay = data[2]
-                trigger.duration = data[3]
-                # Allow for multiple triggers per block
-                if hasattr(block, 'trigger'):
-                    block.trigger[len(block.trigger)] = trigger
-                else:
-                    block.trigger = {0: trigger}
-            elif ext_type in ['LABELSET', 'LABELINC']:
-                label = SimpleNamespace()
-                label.type = ext_type.lower()
-                supported_labels = get_supported_labels()
-                if ext_type == 'LABELSET':
-                    data = self.label_set_library.data[ext_data[1]]
-                else:
-                    data = self.label_inc_library.data[ext_data[1]]
-
-                label.label = supported_labels[int(data[1] - 1)]
-                label.value = data[0]
-                # Allow for multiple labels per block
-                if block.label is not None:
-                    block.label[len(block.label)] = label
-                else:
-                    block.label = {0: label}
-            else:
-                raise RuntimeError(f'Unknown extension ID {ext_data[0]}')
-
-            next_ext_id = ext_data[2]
-
-    # Reverse the order of labels, because extensions are saved as a reversed linked list
-    if block.label is not None:
-        block.label = dict(enumerate(reversed(block.label.values())))
 
     block.block_duration = self.block_durations[block_index]
 

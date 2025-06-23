@@ -620,7 +620,29 @@ class Sequence:
         """
         self.mod_grad_axis(axis, modifier=-1)
 
-    def get_block(self, block_index: int) -> SimpleNamespace:
+    def get_raw_block_content_IDs(self, block_index: int) -> SimpleNamespace:
+        """
+        Returns PyPulseq block content IDs at `block_index` position in `self.block_events`.
+
+        No block events are created, only the IDs of the objects are returned.
+
+        See Also
+        --------
+        - `pypulseq.Sequence.sequence.Sequence.get_block()`.
+
+        Parameters
+        ----------
+        block_index : int
+            Index of block to be retrieved from `Sequence`.
+
+        Returns
+        -------
+        SimpleNamespace
+            PyPulseq block content IDs at 'block_index' position in `self.block_events`.
+        """
+        return block.get_raw_block_content_IDs(self, block_index)
+
+    def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
         """
         Return a block of the sequence  specified by the index. The block is created from the sequence data with all
         events and shapes decompressed.
@@ -634,13 +656,15 @@ class Sequence:
         ----------
         block_index : int
             Index of block to be retrieved from `Sequence`.
+        add_IDs : bool, optional
+            Add IDs to block structure. The default is `False`.
 
         Returns
         -------
         SimpleNamespace
             Event identified by `block_index`.
         """
-        return block.get_block(self, block_index)
+        return block.get_block(self, block_index, add_IDs)
 
     def get_definition(self, key: str) -> str:
         """
