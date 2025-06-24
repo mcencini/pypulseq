@@ -1,7 +1,8 @@
+import numpy as np
 import pypulseq as pp
 import pytest
 
-from conftest import rotation_matrix
+from conftest import get_rotation_matrix
 
 # Gradient definitions used in tests
 gx_trap = pp.make_trapezoid('x', area=1000, duration=1e-3)
@@ -14,8 +15,8 @@ gx_allhigh = pp.make_extended_trapezoid('x', amplitudes=[100000, 100000, 100000]
 delay = pp.make_delay(1e-3)
 
 # Rotations
-rotmat = pp.make_rotation(rotation_matrix(90.0))
-eye = pp.make_rotation(rotation_matrix(0.0))
+rotmat = pp.make_rotation(get_rotation_matrix('z', np.deg2rad(90.0)))
+eye = pp.make_rotation(get_rotation_matrix('z', np.deg2rad(0.0)))
 
 ## Test gradient continuity checks in add_block
 

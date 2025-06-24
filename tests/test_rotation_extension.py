@@ -9,7 +9,7 @@ import pypulseq as pp
 import pytest
 from pypulseq import Sequence
 
-from conftest import Approx, rotation_matrix
+from conftest import Approx, get_rotation_matrix
 
 expected_output_path = Path(__file__).parent / 'expected_output'
 
@@ -27,7 +27,8 @@ def seq_make_radial():
 
     # init angle list
     theta = np.asarray((0.0, 30.0, 45.0, 60.0, 90.0))
-    rot = [rotation_matrix(th) for th in theta]
+    theta = np.deg2rad(theta)
+    rot = [get_rotation_matrix('z', th) for th in theta]
 
     # build sequence
     for n in range(len(theta)):
@@ -161,12 +162,24 @@ def test_sequence():
         assert b.gz is None
         assert hasattr(b, 'rotation') is True
 
-    npt.assert_allclose(seq.get_block(2).rotation.rot_quaternion.as_matrix(), rotation_matrix(0.0), atol=1e-12)
-    npt.assert_allclose(seq.get_block(4).rotation.rot_quaternion.as_matrix(), rotation_matrix(30.0), atol=1e-12)
-    npt.assert_allclose(seq.get_block(6).rotation.rot_quaternion.as_matrix(), rotation_matrix(45.0), atol=1e-12)
-    npt.assert_allclose(seq.get_block(8).rotation.rot_quaternion.as_matrix(), rotation_matrix(60.0), atol=1e-12)
-    npt.assert_allclose(seq.get_block(10).rotation.rot_quaternion.as_matrix(), rotation_matrix(90.0), atol=1e-12)
-    npt.assert_allclose(seq.get_block(12).rotation.rot_quaternion.as_matrix(), rotation_matrix(0.0), atol=1e-12)
+    npt.assert_allclose(
+        seq.get_block(2).rotation.rot_quaternion.as_matrix(), get_rotation_matrix('z', np.deg2rad(0.0)), atol=1e-12
+    )
+    npt.assert_allclose(
+        seq.get_block(4).rotation.rot_quaternion.as_matrix(), get_rotation_matrix('z', np.deg2rad(30.0)), atol=1e-12
+    )
+    npt.assert_allclose(
+        seq.get_block(6).rotation.rot_quaternion.as_matrix(), get_rotation_matrix('z', np.deg2rad(45.0)), atol=1e-12
+    )
+    npt.assert_allclose(
+        seq.get_block(8).rotation.rot_quaternion.as_matrix(), get_rotation_matrix('z', np.deg2rad(60.0)), atol=1e-12
+    )
+    npt.assert_allclose(
+        seq.get_block(10).rotation.rot_quaternion.as_matrix(), get_rotation_matrix('z', np.deg2rad(90.0)), atol=1e-12
+    )
+    npt.assert_allclose(
+        seq.get_block(12).rotation.rot_quaternion.as_matrix(), get_rotation_matrix('z', np.deg2rad(0.0)), atol=1e-12
+    )
 
 
 # TODO: re-enable after merging rotate3D

@@ -47,77 +47,96 @@ def compare_seq_file():
 
 class Approx(ApproxBase):
     """
-    Extension of pytest.approx that also handles approximate equality
-    recursively within dicts, lists, tuples, and SimpleNamespace
+    Fast approximate equality for nested dicts, lists, tuples, SimpleNamespace, and numpy arrays,
+    derived from pytest's ApproxBase for seamless pytest integration.
     """
+
+    def __init__(self, expected, *, rel=1e-6, abs=1e-12, nan_ok=False):  # noqa: A002
+        super().__init__(expected, rel=rel, abs=abs, nan_ok=nan_ok)
+        self._errors = []
+
+    def __eq__(self, actual):
+        # reset errors
+        self._errors.clear()
+        # stack: (path, expected, actual)
+        stack = [((), self.expected, actual)]
+        rel_tol, abs_tol, nan_ok, errs = self.rel, self.abs, self.nan_ok, self._errors
+        isclose = math.isclose
+
+        while stack:
+            path, exp, act = stack.pop()
+            if isinstance(exp, R):
+                exp = exp.as_matrix()
+            if isinstance(act, R):
+                act = act.as_matrix()
+
+            # dict
+            if isinstance(exp, dict):
+                if not isinstance(act, dict) or set(exp) != set(act):
+                    errs.append(
+                        f'{".".join(path) or "<root>"}: key-sets differ; expected {set(exp)}, got {set(getattr(act, "keys", lambda: act)())}'  # noqa: B023
+                    )
+                    return False
+                for k in exp:
+                    stack.append((path + (str(k),), exp[k], act[k]))  # noqa: RUF005
+                continue
+
+            # list/tuple
+            if isinstance(exp, (list, tuple)):
+                if not isinstance(act, type(exp)) or len(exp) != len(act):
+                    errs.append(
+                        f'{".".join(path) or "<root>"}: length/type mismatch; expected {type(exp).__name__}[{len(exp)}], got {type(act).__name__}[{len(act)}]'
+                    )
+                    return False
+                for idx, (e, a) in enumerate(zip(exp, act)):
+                    stack.append((path + (str(idx),), e, a))  # noqa: RUF005
+                continue
+
+            # SimpleNamespace
+            if isinstance(exp, SimpleNamespace):
+                if not isinstance(act, SimpleNamespace):
+                    errs.append(f'{".".join(path)}: expected SimpleNamespace, got {type(act).__name__}')
+                    return False
+                stack.append((path, exp.__dict__, act.__dict__))
+                continue
+
+            # numpy arrays
+            if isinstance(exp, np.ndarray) or isinstance(act, np.ndarray):
+                try:
+                    npt.assert_allclose(act, exp, rtol=rel_tol, atol=abs_tol, equal_nan=nan_ok)
+                except AssertionError as e:
+                    errs.append(f'{".".join(path) or "<array>"}: {e}')
+                    return False
+                continue
+
+            # scalar or fallback
+            try:
+                if not (
+                    isclose(act, exp, rel_tol=rel_tol, abs_tol=abs_tol)
+                    or (nan_ok and math.isnan(act) and math.isnan(exp))
+                ):
+                    errs.append(
+                        f'{".".join(path) or "<value>"}: {act!r} != {exp!r} within (rel={rel_tol}, abs={abs_tol})'
+                    )
+                    return False
+            except TypeError:
+                approx = pytest.approx(exp, rel=rel_tol, abs=abs_tol, nan_ok=nan_ok)
+                if act != approx:
+                    msgs = approx._repr_compare(act)
+                    errs.extend(msgs)
+                    return False
+
+        return True
 
     def __repr__(self):
         return str(self.expected)
 
-    def __eq__(self, actual):
-        # if type(actual) != type(self.expected):
-        #     return False
-        if isinstance(self.expected, dict):
-            if set(self.expected.keys()) != set(actual.keys()):
-                return False
-
-            for k in self.expected:
-                if isinstance(self.expected[k], R):
-                    e = self.expected[k].as_matrix()
-                else:
-                    e = self.expected[k]
-                if isinstance(actual[k], R):
-                    a = actual[k].as_matrix()
-                else:
-                    a = actual[k]
-                if a != Approx(e, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok):
-                    return False
-            return True
-        elif isinstance(self.expected, (list, tuple)):
-            if len(self.expected) != len(actual):
-                return False
-
-            for e, a in zip(self.expected, actual):
-                if a != Approx(e, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok):
-                    return False
-            return True
-        elif isinstance(self.expected, SimpleNamespace):
-            return actual.__dict__ == Approx(self.expected.__dict__, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
-        else:
-            return actual == pytest.approx(self.expected, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
-
     def _repr_compare(self, actual):
-        # if type(actual) != type(self.expected):
-        #     return [f'Actual and expected types do not match: {type(actual)} != {type(self.expected)}']
-        if isinstance(self.expected, dict):
-            if set(self.expected.keys()) != set(actual.keys()):
-                return [f'Actual and expected keys do not match: {set(actual.keys())} != {set(self.expected.keys())}']
-
-            r = []
-            for k in self.expected:
-                approx_obj = Approx(self.expected[k], rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
-                if actual[k] != approx_obj:
-                    r += [f'{k} does not match:']
-                    r += [f'  {x}' for x in approx_obj._repr_compare(actual[k])]
-            return r
-        elif isinstance(self.expected, (list, tuple)):
-            if len(self.expected) != len(actual):
-                return [f'Actual and expected lengths do not match: {len(actual)} != {len(self.expected)}']
-            r = []
-            for i, (e, a) in enumerate(zip(self.expected, actual)):
-                approx_obj = Approx(e, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)
-                if a != approx_obj:
-                    r += [f'Index {i} does not match:']
-                    r += [f'  {x}' for x in approx_obj._repr_compare(a)]
-            return r
-        elif isinstance(self.expected, SimpleNamespace):
-            return Approx(self.expected.__dict__, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)._repr_compare(
-                actual.__dict__
-            )
-        else:
-            return pytest.approx(self.expected, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok)._repr_compare(actual)
+        # populate errors
+        _ = actual == self
+        return self._errors
 
 
 # Rotation Matrix creation routine
-def rotation_matrix(angle):
-    return R.from_euler('z', angle, degrees=True).as_matrix()
+def get_rotation_matrix(channel, angle):
+    return R.from_euler(channel, angle, degrees=False).as_matrix()
