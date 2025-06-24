@@ -103,70 +103,72 @@ def check_grad_continuity(self, block_index, check_g, duration):
 def _get_neighboring_blocks(self, block_index):
     check_next = False
     blocks = None
-    if self.next_free_block_ID > 1:
-        # First handle previous block.
-        # If cached block is already the one before the new one
-        # use it. Otherwise, read it.
-        if self.grad_check_data_prev.valid_for_block_num != block_index - 1:
-            # Initialize to empty / trapezoid gradient
-            self.grad_check_data_prev.valid_for_block_num = block_index - 1
-            self.grad_check_data_prev.last_grad_vals = [0.0, 0.0, 0.0]
 
-            # Get previous block ID
-            if block_index == self.next_free_block_ID:
-                # New block inserted
-                prev_block_index = next(reversed(self.block_events))
-            else:
-                blocks = list(self.block_events) if blocks is None else blocks
-                try:
-                    # Existing block overwritten
-                    idx = blocks.index(block_index)
-                    prev_block_index = blocks[idx - 1] if idx > 0 else None
-                except ValueError:
-                    # Inserting a new block with non-contiguous numbering
-                    prev_block_index = next(reversed(self.block_events))
+    # First handle previous block. Do it only if this is not the first gradient
+    # in an empty sequence. Search the previous block only if the cached is different
+    # from the one preceding current block
+    if self.next_free_block_ID > 1 and self.grad_check_data_prev.valid_for_block_num != block_index - 1:
+        # Initialize to empty / trapezoid gradient
+        self.grad_check_data_prev.last_grad_vals = [0.0, 0.0, 0.0]
 
-            # Fill previous block gradient data.
-            # If empty or trapezoid, implicitly leave it to 0
-            for ax in range(3):
-                if prev_block_index is not None:
-                    prev_id = self.block_events[prev_block_index][ax + 2]
-                    if prev_id != 0:
-                        prev_lib = self.grad_library.get(prev_id)
-                        prev_type = prev_lib['type']
-                        prev_dat = prev_lib['data']
-
-                        if prev_type == 'g':
-                            self.grad_check_data_prev.last_grad_vals[ax] = prev_dat[2]
-
-        # Now handle next block.
-        if block_index < self.next_free_block_ID and self.grad_check_data_next.valid_for_block_num != block_index + 1:
-            # Initialize to empty / trapezoid gradient
-            self.grad_check_data_next.valid_for_block_num = block_index + 1
-            self.grad_check_data_next.first_grad_vals = [0.0, 0.0, 0.0]
-
-            # Get next block ID
+        # Get previous block ID
+        if block_index == self.next_free_block_ID:
+            # New block inserted
+            prev_block_index = next(reversed(self.block_events))
+        else:
             blocks = list(self.block_events) if blocks is None else blocks
             try:
                 # Existing block overwritten
                 idx = blocks.index(block_index)
-                next_block_index = blocks[idx + 1] if idx < len(blocks) - 1 else None
-                check_next = True
+                prev_block_index = blocks[idx - 1] if idx > 0 else None
             except ValueError:
                 # Inserting a new block with non-contiguous numbering
-                next_block_index = None
+                prev_block_index = next(reversed(self.block_events))
 
-            # Fill next block gradient data.
-            # If empty or trapezoid, implicitly leave it to 0
-            for ax in range(3):
-                if next_block_index is not None:
-                    next_id = self.block_events[next_block_index][ax + 2]
-                    if next_id != 0:
-                        next_lib = self.grad_library.get(next_id)
-                        next_type = next_lib['type']
-                        next_dat = next_lib['data']
+        # Fill previous block gradient data.
+        # If empty or trapezoid, implicitly leave it to 0
+        for ax in range(3):
+            if prev_block_index is not None:
+                prev_id = self.block_events[prev_block_index][ax + 2]
+                if prev_id != 0:
+                    prev_lib = self.grad_library.get(prev_id)
+                    prev_type = prev_lib['type']
+                    prev_dat = prev_lib['data']
 
-                        if next_type == 'g':
-                            self.grad_check_data_next.first_grad_vals[ax] = next_dat[1]
+                    if prev_type == 'g':
+                        self.grad_check_data_prev.last_grad_vals[ax] = prev_dat[2]
+
+    # Now handle next block.
+    if block_index < self.next_free_block_ID and self.grad_check_data_next.valid_for_block_num != block_index:
+        # Cached next block is not valid - searching for correct next block
+        # Initialize to empty / trapezoid gradient
+        self.grad_check_data_next.first_grad_vals = [0.0, 0.0, 0.0]
+
+        # Get next block ID
+        blocks = list(self.block_events) if blocks is None else blocks
+        try:
+            # Existing block overwritten
+            idx = blocks.index(block_index)
+            next_block_index = blocks[idx + 1] if idx < len(blocks) - 1 else None
+            check_next = True
+        except ValueError:
+            # Inserting a new block with non-contiguous numbering
+            next_block_index = None
+
+        # Fill next block gradient data.
+        # If empty or trapezoid, implicitly leave it to 0
+        for ax in range(3):
+            if next_block_index is not None:
+                next_id = self.block_events[next_block_index][ax + 2]
+                if next_id != 0:
+                    next_lib = self.grad_library.get(next_id)
+                    next_type = next_lib['type']
+                    next_dat = next_lib['data']
+
+                    if next_type == 'g':
+                        self.grad_check_data_next.first_grad_vals[ax] = next_dat[1]
+    elif self.grad_check_data_next.valid_for_block_num == block_index:
+        # Cached next block is valid - using it
+        check_next = True
 
     return check_next
