@@ -62,7 +62,8 @@ def decompress_shape(compressed_shape: SimpleNamespace, force_decompression: boo
 
     # Samples left?
     if count_pack <= data_pack_len - 1:
-        assert data_pack_len - count_pack == num_samples - count_unpack
+        if data_pack_len - count_pack != num_samples - count_unpack:
+            raise ValueError('Inconsistent number of remaining samples after decompression')
         # Copy the rest of the shape, it is unpacked
         decompressed_shape[count_unpack:] = data_pack[count_pack:]
 

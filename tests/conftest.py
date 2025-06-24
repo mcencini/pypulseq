@@ -60,7 +60,15 @@ class Approx(ApproxBase):
                 return False
 
             for k in self.expected:
-                if actual[k] != Approx(self.expected[k], rel=self.rel, abs=self.abs, nan_ok=self.nan_ok):
+                if isinstance(self.expected[k], R):
+                    e = self.expected[k].as_matrix()
+                else:
+                    e = self.expected[k]
+                if isinstance(actual[k], R):
+                    a = actual[k].as_matrix()
+                else:
+                    a = actual[k]
+                if a != Approx(e, rel=self.rel, abs=self.abs, nan_ok=self.nan_ok):
                     return False
             return True
         elif isinstance(self.expected, (list, tuple)):

@@ -29,7 +29,8 @@ def calc_duration(*args: SimpleNamespace) -> float:
     duration = 0
     for event in events:
         if isinstance(event, (float, int)):  # block_duration field
-            assert duration <= event
+            if duration > event:
+                raise ValueError('Block duration is longer than input')
             duration = event
             continue
 

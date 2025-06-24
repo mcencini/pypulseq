@@ -293,8 +293,8 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
         # Format: ext_type, ext_id, next_ext_id
 
         # Unpack trigger(s)
-        trig_ext = raw_block.ext[1, raw_block.ext[0] == self.get_extension_type_ID('TRIGGERS')]
-        if len(trig_ext) > 0:
+        trig_ext = raw_block.ext[1, raw_block.ext[0] == self.get_extension_type_ID('TRIGGERS', update=False)]
+        if trig_ext.shape[-1] > 0:
             trigger_types = ['output', 'trigger']
             for i in range(trig_ext.shape[-1]):
                 data = self.trigger_library.data[trig_ext[i]]
@@ -319,11 +319,11 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
                     block.trigger = {0: trigger}
 
         # Unpack labels
-        lid_set = self.get_extension_type_ID('LABELSET')
-        lid_inc = self.get_extension_type_ID('LABELINC')
+        lid_set = self.get_extension_type_ID('LABELSET', update=False)
+        lid_inc = self.get_extension_type_ID('LABELINC', update=False)
         supported_labels = get_supported_labels()
         label_ext = raw_block.ext[:, np.logical_or(raw_block.ext[0] == lid_set, raw_block.ext[0] == lid_inc)]
-        if len(label_ext) > 0:
+        if label_ext.shape[-1] > 0:
             for i in range(label_ext.shape[-1]):
                 label = SimpleNamespace()
                 if label_ext[0, i] == lid_set:
@@ -351,9 +351,9 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
         # TODO: RF Shim
 
         # Unpack 3D Rotations
-        rotation_ext = raw_block.ext[:, raw_block.ext[0] == self.get_extension_type_ID('ROTATIONS')]
-        if len(rotation_ext) > 0:
-            if rotation_ext.shape[-1]:
+        rotation_ext = raw_block.ext[:, raw_block.ext[0] == self.get_extension_type_ID('ROTATIONS', update=False)]
+        if rotation_ext.shape[-1] > 0:
+            if rotation_ext.shape[-1] > 1:
                 raise ValueError('Only one rotation extension object per block is allowed')
             data = self.rotation_library.data[rotation_ext[1].item()]
             block.rotation = SimpleNamespace()
@@ -366,13 +366,12 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
             for i in range(raw_block.ext.shape[1]):
                 ext_id = raw_block.ext[0, i]
                 if (
-                    ext_id != self.get_extension_type_ID('TRIGGERS')
-                    and ext_id != self.get_extension_type_ID('LABELSET')
-                    and ext_id != self.get_extension_type_ID('RF_SHIMS')
-                    and ext_id != self.get_extension_type_ID('DELAYS')
+                    ext_id != self.get_extension_type_ID('TRIGGERS', update=False)
+                    and ext_id != self.get_extension_type_ID('LABELSET', update=False)
+                    and ext_id != self.get_extension_type_ID('LABELINC', update=False)
                     # TODO: Soft Delays
                     # TODO: RF Shim
-                    and ext_id != self.get_extension_type_ID('ROTATIONS')
+                    and ext_id != self.get_extension_type_ID('ROTATIONS', update=False)
                 ):
                     warnings.warn(f'Unknown extension ID {ext_id}')
 

@@ -88,7 +88,8 @@ def write(self, file_name: Union[str, Path], create_signature, remove_duplicates
             block_duration = self.block_durations[block_counter] / self.block_duration_raster
             block_duration_rounded = round(block_duration)
 
-            assert abs(block_duration_rounded - block_duration) < 1e-6
+            if abs(block_duration_rounded - block_duration) >= 1e-6:
+                raise ValueError('Inconsistent block duration after rounding')
 
             s = id_format_str.format(
                 *(

@@ -27,14 +27,14 @@ def test_flat_time_error():
 def test_area_too_large_error():
     errstr = 'Requested area is too large for this gradient. Minimum required duration is'
 
-    with pytest.raises(AssertionError, match=errstr):
+    with pytest.raises(ValueError, match=errstr):
         make_trapezoid(channel='x', area=1e6, duration=1e-6)
 
 
 def test_area_too_large_error_rise_time():
     errstr = 'Requested area is too large for this gradient. Probably amplitude is violated'
 
-    with pytest.raises(AssertionError, match=errstr):
+    with pytest.raises(ValueError, match=errstr):
         make_trapezoid(channel='x', area=1e6, duration=1e-6, rise_time=1e-7)
 
 
