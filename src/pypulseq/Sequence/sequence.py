@@ -16,7 +16,7 @@ import numpy as np
 from scipy.interpolate import PPoly
 
 from pypulseq import __version__, eps
-from pypulseq.aux.seq_plot import seq_plot
+from pypulseq.aux.seq_plot import SeqPlot
 from pypulseq.calc_rf_center import calc_rf_center
 from pypulseq.check_timing import check_timing as ext_check_timing
 from pypulseq.check_timing import print_error_report
@@ -605,6 +605,33 @@ class Sequence:
 
         return labels
 
+    import numpy as np
+
+    def find_block_by_time(self, t: float) -> int:
+        """
+        Find the index of the block containing time `t`.
+
+        Parameters
+        ----------
+        t : float
+            Time (in seconds) to locate within the sequence.
+
+        Returns
+        -------
+        int or None
+            Index of the block that contains the given time, or None if out of range.
+        """
+        cumsum_durations = np.cumsum(list(self.block_durations.values()))
+        block_index = np.searchsorted(cumsum_durations, t, side='right').item()
+
+        if block_index >= len(self.block_durations):
+            return None
+
+        if self.block_durations[block_index] <= 0:
+            raise ValueError('Block duration cannot be negative')
+
+        return block_index
+
     def flip_grad_axis(self, axis: str) -> None:
         """
         Invert all gradients along the corresponding axis/channel. The function acts on all gradient objects already
@@ -948,7 +975,7 @@ class Sequence:
         `~matplotlib.image.AxesImage`
             Figure object for Gradient channels. Only returned if `plot_now=False`.
         """
-        return seq_plot(self, label, show_blocks, save, time_range, time_disp, grad_disp, plot_now)
+        return SeqPlot(self, label, show_blocks, save, time_range, time_disp, grad_disp, plot_now)
 
     def read(self, file_path: str, detect_rf_use: bool = False, remove_duplicates: bool = True) -> None:
         """
