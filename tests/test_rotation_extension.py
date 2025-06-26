@@ -182,36 +182,35 @@ def test_sequence():
     )
 
 
-# TODO: re-enable after merging rotate3D
 # Test again explicit gradient rotation
-# def test_vs_rotate():
-#     seq = seq_make_radial()
-#     seq2 = seq_make_radial_norotext()
+def test_vs_rotate():
+    seq = seq_make_radial()
+    seq2 = seq_make_radial_norotext()
 
-#     # test waveforms()
-#     waveforms = seq.waveforms()
-#     waveforms2 = seq2.waveforms()
+    # test waveforms()
+    waveforms = seq.waveforms()
+    waveforms2 = seq2.waveforms()
 
-#     assert len(waveforms) == len(waveforms2)
-#     for n in range(len(waveforms)):
-#         npt.assert_allclose(waveforms[n], waveforms2[n])
+    assert len(waveforms) == len(waveforms2)
+    for n in range(len(waveforms)):
+        npt.assert_allclose(waveforms[n], waveforms2[n])
 
-#     # test waveforms_and_times()
-#     waveforms_and_times = seq.waveforms_and_times()
-#     waveforms_and_times2 = seq2.waveforms_and_times()
+    # test waveforms_and_times()
+    waveforms_and_times = seq.waveforms_and_times()
+    waveforms_and_times2 = seq2.waveforms_and_times()
 
-#     assert len(waveforms_and_times) == len(waveforms_and_times2)
-#     for n in range(len(waveforms_and_times)):
-#         assert len(waveforms_and_times[n]) == len(waveforms_and_times[n])
-#         for m in range(len(waveforms_and_times[n])):
-#             npt.assert_allclose(waveforms_and_times[n][m], waveforms_and_times2[n][m])
+    assert len(waveforms_and_times) == len(waveforms_and_times2)
+    for n in range(len(waveforms_and_times)):
+        assert len(waveforms_and_times[n]) == len(waveforms_and_times[n])
+        for m in range(len(waveforms_and_times[n])):
+            npt.assert_allclose(waveforms_and_times[n][m], waveforms_and_times2[n][m])
 
-#     # test k-space
-#     kspace = seq.calculate_kspace()
-#     kspace2 = seq2.calculate_kspace()
+    # test k-space
+    kspace = seq.calculate_kspace()
+    kspace2 = seq2.calculate_kspace()
 
-#     for n in range(len(kspace)):
-#         npt.assert_allclose(kspace[n], kspace2[n])
+    for n in range(len(kspace)):
+        npt.assert_allclose(kspace[n], kspace2[n])
 
 
 # This "test" rewrites the expected .seq output files when SAVE_EXPECTED is
