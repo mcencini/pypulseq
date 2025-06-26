@@ -50,7 +50,9 @@ If you use PyPulseq in your work, please cite the publications listed under [Ref
 
 This unofficial PyPulseq must be installed from source using the command
 
-`pip install git+https://github.com/mcencini/pypulseq@experimental`
+```bash
+pip install git+https://github.com/mcencini/pypulseq@experimental
+```
 
 To use the [sigpy](https://sigpy.readthedocs.io/en/latest/) functionality of `make_sigpy_pulse.py` run `pip install pypulseq[sigpy]` to install the required dependencies and enable this functionality.
 
