@@ -225,7 +225,20 @@ def write(self, file_name: Union[str, Path], create_signature, remove_duplicates
                 output_file.write(s)
             output_file.write('\n')
 
-        # TODO: Soft Delays
+        if len(self.soft_delay_library.data) != 0:
+            output_file.write('# Extension specification for soft delays:\n')
+            output_file.write('# id num offset factor hint\n')
+            output_file.write('# ..  ..     us     ..   ..\n')
+
+            tid = self.get_extension_type_ID('DELAYS')
+            output_file.write(f'extension DELAYS {tid}\n')
+            id_format_str = '{:.0f} {:.0f} {:.0f} {:.0f} {}\n'
+
+            for k in self.soft_delay_library.data:
+                data = self.soft_delay_library.data[k]
+                s = id_format_str.format(k, data[0], np.round(data[1] * 1e6), data[2], data[3])
+                output_file.write(s)
+            output_file.write('\n')
 
         # TODO: RF Shim
 
