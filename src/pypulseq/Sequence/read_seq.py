@@ -52,6 +52,7 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
     self.shape_library = EventLibrary()
     self.trigger_library = EventLibrary()
     self.rotation_library = EventLibrary()
+    self.rf_shim_library = EventLibrary()
 
     # Raster times
     self.grad_raster_time = self.system.grad_raster_time
@@ -221,7 +222,10 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
                 for d in self.soft_delay_library.data.values():
                     if d[3] not in self.soft_delay_hints:
                         self.soft_delay_hints[d[3]] = d[0]
-            # TODO: rfShim
+            elif section[:18] == 'extension RF_SHIMS':
+                extension_id = int(section[18:])
+                self.set_extension_string_ID('RF_SHIMS', extension_id)
+                self.rf_shim_library = __read_and_parse_events(input_file, __preproc_rf_shim_data)
             elif section[:19] == 'extension ROTATIONS':
                 extension_id = int(section[19:])
                 self.set_extension_string_ID('ROTATIONS', extension_id)
@@ -816,3 +820,9 @@ def __fromstring(line, format_spec: List) -> List:
             raise ValueError(f'Unsupported format: {fmt}')
 
     return data
+
+
+def __preproc_rf_shim_data(data):
+    if len(data) != 2 * data[0] + 1:
+        raise ValueError('Error reading RF shim extension data')
+    return data[1:]

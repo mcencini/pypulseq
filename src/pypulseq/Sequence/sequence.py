@@ -68,6 +68,7 @@ class Sequence:
         self.trigger_library = EventLibrary()
         self.soft_delay_library = EventLibrary()
         self.rotation_library = EventLibrary()
+        self.rf_shim_library = EventLibrary()
 
         # =========
         # OTHER
@@ -1021,6 +1022,9 @@ class Sequence:
 
     def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
         return block.register_rf_event(self, event)
+
+    def register_rf_shim_event(self, event: SimpleNamespace) -> int:
+        return block.register_rf_shim_event(self, event)
 
     def register_rotation_event(self, event: SimpleNamespace) -> int:
         return block.register_rotation_event(self, event)

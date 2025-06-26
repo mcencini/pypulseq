@@ -240,7 +240,17 @@ def write(self, file_name: Union[str, Path], create_signature, remove_duplicates
                 output_file.write(s)
             output_file.write('\n')
 
-        # TODO: RF Shim
+        if len(self.rf_shim_library.data) != 0:
+            output_file.write('# Extension specification for RF shimming:\n')
+            output_file.write('# id num_chan factor magn_c1 phase_c1 magn_c2 phase_c2 ...\n')
+            output_file.write(f'extension RF_SHIMS {self.get_extension_type_ID("RF_SHIMS")}\n')
+
+            for k in self.rf_shim_library.data:
+                shim_vector_length = len(self.rf_shim_library.data[k])
+                id_format_str = '{:.0f} {:0f}' + shim_vector_length * '{:12g}' + '\n'
+                s = id_format_str.format(k, int(0.5 * shim_vector_length), *self.rf_shim_library.data[k])
+                output_file.write(s)
+            output_file.write('\n')
 
         if len(self.rotation_library.data) != 0:
             output_file.write('# Extension specification for rotation events:\n')

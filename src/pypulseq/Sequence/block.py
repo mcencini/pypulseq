@@ -165,7 +165,15 @@ def set_block(self, block_index: int, *args: Union[SimpleNamespace, float]) -> N
                 duration = max(duration, event.default_duration)
                 ext = {'type': self.get_extension_type_ID('DELAYS'), 'ref': event_id}
                 extensions.append(ext)
-            # TODO: add rfShim
+            elif event.type == 'rf_shim':
+                if hasattr(event, 'id'):
+                    event_id = event.id
+                else:
+                    event_id = register_rf_shim_event(self, event)
+
+                duration = max(duration, event.default_duration)
+                ext = {'type': self.get_extension_type_ID('RF_SHIMS'), 'ref': event_id}
+                extensions.append(ext)
             elif event.type == 'rot3D':
                 rot_event = event
                 if hasattr(event, 'id'):
@@ -388,8 +396,20 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
             block.soft_delay.factor = data[2]
             block.soft_delay.hint = data[3]
             block.soft_delay.default_duration = self.block_durations[block_index]
+            if add_IDs:
+                block.soft_delay.id = delay_ext[1].item()
 
-        # TODO: RF Shim
+        # Unpack RF Shim
+        rf_shim_ext = raw_block.ext[:, raw_block.ext[0] == self.get_extension_type_ID('RF_SHIMS', update=False)]
+        if rf_shim_ext.shape[-1] > 0:
+            if rf_shim_ext.shape[-1] > 1:
+                raise ValueError('Only one RF shims extension object per block is allowed')
+            data = self.rf_shim_library.data[rf_shim_ext[1].item()]
+            block.rf_shim = SimpleNamespace()
+            block.rf_shim.type = 'rf_shim'
+            block.rf_shim.shim_vector = data[0::2] * np.exp(1j * 2 * math.pi * data[1::2])
+            if add_IDs:
+                block.rf_shim.id = rf_shim_ext[1].item()
 
         # Unpack 3D Rotations
         rotation_ext = raw_block.ext[:, raw_block.ext[0] == self.get_extension_type_ID('ROTATIONS', update=False)]
@@ -411,7 +431,7 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
                     and ext_id != self.get_extension_type_ID('LABELSET', update=False)
                     and ext_id != self.get_extension_type_ID('LABELINC', update=False)
                     and ext_id != self.get_extension_type_ID('DELAYS', update=False)
-                    # TODO: RF Shim
+                    and ext_id != self.get_extension_type_ID('RF_SHIMS', update=False)
                     and ext_id != self.get_extension_type_ID('ROTATIONS', update=False)
                 ):
                     warnings.warn(f'Unknown extension ID {ext_id}')
@@ -743,38 +763,6 @@ def register_label_event(self, event: SimpleNamespace) -> int:
     return label_id
 
 
-def register_soft_delay_event(self, event: SimpleNamespace) -> int:
-    """
-    Parameters
-    ----------
-    event : SimpleNamespace
-        ID of soft delay event to be registered.
-
-    Returns
-    -------
-    int
-        ID of registered soft delay event.
-    """
-    if event.hint in self.soft_delay_hints:
-        if event.numID and event.numID != self.soft_delay_hints[event.hint]:
-            raise ValueError('Given numID and hint is inconsistent for the soft delay.')
-        event.numID = self.soft_delay_hints[event.hint]
-    else:
-        if event.numID is None:
-            event.numID = max([-1, *self.soft_delay_hints.values()]) + 1
-
-        self.soft_delay_hints[event.hint] = event.numID
-    data = (event.numID, event.offset, event.factor, event.hint)
-    soft_delay_id, found = self.soft_delay_library.find_or_insert(new_data=data)
-
-    # Clear block cache because label event was overwritten
-    # TODO: Could find only the blocks that are affected by the changes
-    if self.use_block_cache and found:
-        self.block_cache.clear()
-
-    return soft_delay_id
-
-
 def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
     """
     Parameters
@@ -865,6 +853,29 @@ def register_rf_event(self, event: SimpleNamespace) -> Tuple[int, List[int]]:
     return rf_id, shape_IDs
 
 
+def register_rf_shim_event(self, event: SimpleNamespace) -> int:
+    """
+    Parameters
+    ----------
+    event : SimpleNamespace
+        ID of rf shim event to be registered.
+
+    Returns
+    -------
+    int
+        ID of registered soft delay event.
+    """
+    data = (np.abs(event.shim_vector), np.angle(event.shim_vector))
+    rf_shim_id, found = self.rf_shim_library.find_or_insert(new_data=data)
+
+    # Clear block cache because RF shim event was overwritten
+    # TODO: Could find only the blocks that are affected by the changes
+    if self.use_block_cache and found:
+        self.block_cache.clear()
+
+    return rf_shim_id
+
+
 def register_rotation_event(self, event: EventLibrary) -> int:
     """
     Parameters
@@ -880,9 +891,41 @@ def register_rotation_event(self, event: EventLibrary) -> int:
     data = tuple(event.rot_quaternion.as_quat(canonical=True, scalar_first=True).tolist())
     rotation_id, found = self.rotation_library.find_or_insert(new_data=data)
 
-    # Clear block cache because Rotation was overwritten
+    # Clear block cache because Rotation event was overwritten
     # TODO: Could find only the blocks that are affected by the changes
     if self.use_block_cache and found:
         self.block_cache.clear()
 
     return rotation_id
+
+
+def register_soft_delay_event(self, event: SimpleNamespace) -> int:
+    """
+    Parameters
+    ----------
+    event : SimpleNamespace
+        ID of soft delay event to be registered.
+
+    Returns
+    -------
+    int
+        ID of registered soft delay event.
+    """
+    if event.hint in self.soft_delay_hints:
+        if event.numID and event.numID != self.soft_delay_hints[event.hint]:
+            raise ValueError('Given numID and hint is inconsistent for the soft delay.')
+        event.numID = self.soft_delay_hints[event.hint]
+    else:
+        if event.numID is None:
+            event.numID = max([-1, *self.soft_delay_hints.values()]) + 1
+
+        self.soft_delay_hints[event.hint] = event.numID
+    data = (event.numID, event.offset, event.factor, event.hint)
+    soft_delay_id, found = self.soft_delay_library.find_or_insert(new_data=data)
+
+    # Clear block cache because soft delay event was overwritten
+    # TODO: Could find only the blocks that are affected by the changes
+    if self.use_block_cache and found:
+        self.block_cache.clear()
+
+    return soft_delay_id
