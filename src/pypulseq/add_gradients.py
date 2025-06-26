@@ -100,7 +100,7 @@ def add_gradients(
             firsts.append(0.0)
             lasts.append(0.0)
         else:
-            tt_rast = grads[ii].tt / system.grad_raster_time - 1
+            tt_rast = grads[ii].tt / system.grad_raster_time
             is_arb.append(np.all(np.abs(tt_rast + 0.5 - np.arange(1, len(tt_rast) + 1))) < eps)
             is_osa.append(np.all(np.abs(tt_rast - 0.5 * np.arange(1, len(tt_rast) + 1)) < eps))
             firsts.append(grads[ii].first)
