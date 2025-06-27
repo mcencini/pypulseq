@@ -14,7 +14,7 @@
 
 # PyPulseq: A Python Package for MRI Pulse Sequence Design
 
-## PyPulseq (v1.4.2.post1) is compatible with all Pulseq interpreter sequences with version >= 1.4.0. The new features introduced with Pulseq 1.5.0 are not yet supported, but will be added in the near future. 
+## This is an unofficial (currently untested) version of PyPulseq supporting v1.5.1 format. Official PyPulseq toolbox is currently being updated - once released, this unofficial version will be deprecated.  
 
 ## Table of contents 🧾
 
@@ -37,7 +37,7 @@ PyPulseq enables vendor-neutral pulse sequence design in Python [[1,2]][section-
 exported as a `.seq` file to be run on Siemens, [GE], [Bruker] and now also Philips hardware by leveraging their respective Pulseq interpreters. This tool is targeted at MRI pulse sequence designers, researchers, students and other interested
 users. It is a translation of the Pulseq framework originally written in Matlab [[3]][section-references].
 
-👉 Currently, PyPulseq is compatible with Pulseq >= 1.4.0. The new features introduced with Pulseq 1.5.0 are not yet supported, but will be added in the near future. 👈
+👉 Currently, PyPulseq is compatible with Pulseq 1.5.1. 👈
 
 It is strongly recommended to first read the [Pulseq specification]  before proceeding. The specification
 document defines the concepts required for pulse sequence design using PyPulseq.
@@ -48,17 +48,13 @@ If you use PyPulseq in your work, please cite the publications listed under [Ref
 
 ## 2. 🔨 Installation
 
-PyPulseq is available on the python Package Index [PyPi](https://pypi.org/project/pypulseq/) and can be installed using the command
+This unofficial PyPulseq must be installed from source using the command
 
-`pip install pypulseq`
+```bash
+pip install git+https://github.com/mcencini/pypulseq@experimental
+```
 
 To use the [sigpy](https://sigpy.readthedocs.io/en/latest/) functionality of `make_sigpy_pulse.py` run `pip install pypulseq[sigpy]` to install the required dependencies and enable this functionality.
-
-The latest features and minor bug fixes might not be included in the latest release version. If you want to use the bleeding edge version of PyPulseq, you can install it directly from the development branch of this repository using the command
-
-`pip install git+https://github.com/imr-framework/pypulseq@master`
-
-👉 PyPulseq is **not yet available on conda**, but this is planned for the future 👈
 
 ---
 
