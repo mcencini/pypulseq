@@ -92,7 +92,16 @@ def sigpy_n_seq(
         - phs_0_pt: str, optional, default='None'
             Phase 0 point. SMS only.
     use : str, default='undefined'
-        Use of radio-frequency sinc pulse. Must be one of 'excitation', 'refocusing' or 'inversion'.
+        Use of radio-frequency pulse event. Must be one of
+
+            - 'excitation'
+            - 'refocusing'
+            - 'inversion'
+            - 'saturation'
+            - 'preparation'
+            - 'other'
+            - 'undefined'
+
     plot: bool, optional, default=True
         Show sigpy plot outputs
     freq_ppm : float, default=0

@@ -73,7 +73,16 @@ def make_gauss_pulse(
     time_bw_product : int, default=4
         Time-bandwidth product.
     use : str, default='undefined'
-        Use of radio-frequency gauss pulse event. Must be one defined in pypulseq.supported_labels_rf_use.get_supported_rf_uses.
+        Use of radio-frequency gauss pulse event. Must be one of
+
+            - 'excitation'
+            - 'refocusing'
+            - 'inversion'
+            - 'saturation'
+            - 'preparation'
+            - 'other'
+            - 'undefined'
+
     freq_ppm : float, default=0
         PPM frequency offset.
     phase_ppm : float, default=0

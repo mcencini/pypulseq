@@ -68,7 +68,16 @@ def make_arbitrary_rf(
     time_bw_product : float, default=4
         Time-bandwidth product.
     use : str, default='undefined'
-        Use of arbitrary radio-frequency pulse event. Must be one of 'excitation', 'refocusing' or 'inversion'.
+        Use of arbitrary radio-frequency pulse event. Must be one of
+
+            - 'excitation'
+            - 'refocusing'
+            - 'inversion'
+            - 'saturation'
+            - 'preparation'
+            - 'other'
+            - 'undefined'
+
     freq_ppm : float, default=0
         PPM frequency offset.
     phase_ppm : float, default=0

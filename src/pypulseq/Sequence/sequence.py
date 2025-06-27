@@ -31,6 +31,7 @@ from pypulseq.Sequence.ext_test_report import ext_test_report
 from pypulseq.Sequence.install import detect_scanner
 from pypulseq.Sequence.read_seq import read
 from pypulseq.Sequence.write_seq import write as write_seq
+from pypulseq.supported_labels_rf_use import get_supported_rf_uses
 from pypulseq.utils.cumsum import cumsum
 from pypulseq.utils.tracing import format_trace, trace, trace_enabled
 
@@ -1152,15 +1153,7 @@ class Sequence:
         rf.dead_time = self.system.rf_dead_time
         rf.ringdown_time = self.system.rf_ringdown_time
 
-        # TODO: fixme : use map built from pp.get_supported_rf_uses()
-        use_cases = {
-            'e': 'excitation',
-            'r': 'refocusing',
-            'i': 'inversion',
-            's': 'saturation',
-            'p': 'preparation',
-            'o': 'other',
-        }
+        use_cases = {use[0]: use for use in get_supported_rf_uses()}
         rf.use = use_cases.get(use, 'undefined')
 
         return rf
