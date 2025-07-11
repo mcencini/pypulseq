@@ -26,6 +26,7 @@ from pypulseq.event_lib import EventLibrary
 from pypulseq.opts import Opts
 from pypulseq.Sequence import block
 from pypulseq.Sequence.calc_grad_spectrum import calculate_gradient_spectrum
+from pypulseq.Sequence.calc_moments_b_tensor import calc_moments_b_tensor
 from pypulseq.Sequence.calc_pns import calc_pns
 from pypulseq.Sequence.ext_test_report import ext_test_report
 from pypulseq.Sequence.install import detect_scanner
@@ -185,6 +186,38 @@ class Sequence:
 
         block.set_block(self, self.next_free_block_ID, *args)
         self.next_free_block_ID += 1
+
+    def calc_moments_b_tensor(
+        self, calcB: bool = True, calcM1: bool = False, calcM2: bool = False, calcM3: bool = False, n_dummy: int = 0
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Compute B-tensor and up to 3rd order moments from sequence gradients.
+
+        Parameters
+        ----------
+        calcB : bool, default=True
+            Compute B-tensor.
+        calcM1 : bool, default=False
+            Whether to compute m1.
+        calcM2 : bool, default=False
+            Whether to compute m2.
+        calcM3 : bool, default=False
+            Whether to compute m3.
+        n_dummy : int, default=0
+            Number of dummy shots to skip.
+
+        Returns
+        -------
+        B : np.ndarray
+            B tensor with shape `(R, 3, 3)`.
+        M1 : np.ndarray
+            M1 moment with shape `(R,3)`.
+        M2 : np.ndarray
+            M2 moment with shape `(R,3)`.
+        M3 : np.ndarray
+            M3 moment with shape `(R,3)`.
+        """
+        return calc_moments_b_tensor(self, calcB, calcM1, calcM2, calcM3, n_dummy)
 
     def calculate_gradient_spectrum(
         self,

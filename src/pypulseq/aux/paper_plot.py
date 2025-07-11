@@ -85,7 +85,7 @@ def paper_plot(
         rf_waveform = np.imag(wave_data[3][1])
     else:
         rf_waveform = np.abs(wave_data[3][1])
-    ax.plot(wave_data[3][0], rf_waveform, color=rf_color, lw=line_width)
+    ax.plot(wave_data[3][0].real, rf_waveform, color=rf_color, lw=line_width)
 
     if len(t_adc) > 0:
         t_adc_x3 = np.repeat(t_adc[np.newaxis, :], 3, axis=0)
