@@ -121,6 +121,7 @@ def make_arbitrary_grad(
     grad.channel = channel
     grad.waveform = waveform
     grad.delay = delay
+
     if oversampling:
         if len(waveform) % 2 == 0:
             raise ValueError('When oversampling is active, waveform must have an odd number of samples')
@@ -131,6 +132,8 @@ def make_arbitrary_grad(
         grad.area = (waveform * system.grad_raster_time).sum()
         grad.tt = (np.arange(len(waveform)) + 0.5) * system.grad_raster_time
         grad.shape_dur = len(waveform) * system.grad_raster_time
+    grad.first = first
+    grad.last = last
 
     if trace_enabled():
         grad.trace = trace()
