@@ -171,7 +171,6 @@ def set_block(self, block_index: int, *args: Union[SimpleNamespace, float]) -> N
                 else:
                     event_id = register_rf_shim_event(self, event)
 
-                duration = max(duration, event.default_duration)
                 ext = {'type': self.get_extension_type_ID('RF_SHIMS'), 'ref': event_id}
                 extensions.append(ext)
             elif event.type == 'rot3D':
@@ -405,6 +404,7 @@ def get_block(self, block_index: int, add_IDs: bool = False) -> SimpleNamespace:
             if rf_shim_ext.shape[-1] > 1:
                 raise ValueError('Only one RF shims extension object per block is allowed')
             data = self.rf_shim_library.data[rf_shim_ext[1].item()]
+            data = np.asarray(data)
             block.rf_shim = SimpleNamespace()
             block.rf_shim.type = 'rf_shim'
             block.rf_shim.shim_vector = data[0::2] * np.exp(1j * 2 * math.pi * data[1::2])
@@ -866,6 +866,8 @@ def register_rf_shim_event(self, event: SimpleNamespace) -> int:
         ID of registered soft delay event.
     """
     data = (np.abs(event.shim_vector), np.angle(event.shim_vector))
+    data = np.stack(data, axis=-1).ravel()
+    data = tuple(data.tolist())
     rf_shim_id, found = self.rf_shim_library.find_or_insert(new_data=data)
 
     # Clear block cache because RF shim event was overwritten
