@@ -1,7 +1,7 @@
 import re
 import warnings
 from types import SimpleNamespace
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -223,9 +223,10 @@ def read(self, path: str, detect_rf_use: bool = False, remove_duplicates: bool =
                     if d[3] not in self.soft_delay_hints:
                         self.soft_delay_hints[d[3]] = d[0]
             elif section[:18] == 'extension RF_SHIMS':
+                typecast = 64 * [float]
                 extension_id = int(section[18:])
                 self.set_extension_string_ID('RF_SHIMS', extension_id)
-                self.rf_shim_library = __read_and_parse_events(input_file, __preproc_rf_shim_data)
+                self.rf_shim_library = __read_and_parse_events(input_file, *typecast, preproc=__preproc_rf_shim_data)
             elif section[:19] == 'extension ROTATIONS':
                 extension_id = int(section[19:])
                 self.set_extension_string_ID('ROTATIONS', extension_id)
@@ -619,7 +620,7 @@ def __read_events(
     return event_library
 
 
-def __read_and_parse_events(input_file, *args: callable) -> EventLibrary:
+def __read_and_parse_events(input_file, *args: callable, preproc: Union[callable, None] = None) -> EventLibrary:
     """
     Read an event section of a sequence file and return a library of events. Event data elements are converted using
     the provided parser(s). Default parser is `int()`.
@@ -629,6 +630,8 @@ def __read_and_parse_events(input_file, *args: callable) -> EventLibrary:
     input_file : file
     args : callable
         Event parsers.
+    preproc : callable
+        Event processor.
 
     Returns
     -------
@@ -648,6 +651,10 @@ def __read_and_parse_events(input_file, *args: callable) -> EventLibrary:
                 data.append(int(list_of_data_str[i]))
             else:
                 data.append(args[i - 1](list_of_data_str[i]))
+
+        if preproc is not None:
+            data = preproc(data)
+
         event_library.insert(key_id=event_id, new_data=data)
         line = __strip_line(input_file)
 
@@ -823,6 +830,6 @@ def __fromstring(line, format_spec: List) -> List:
 
 
 def __preproc_rf_shim_data(data):
-    if len(data) != 2 * data[0] + 1:
+    if len(data) != 2 * int(data[0]) + 1:
         raise ValueError('Error reading RF shim extension data')
-    return data[1:]
+    return tuple(data[1:])

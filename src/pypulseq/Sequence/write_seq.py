@@ -247,7 +247,7 @@ def write(self, file_name: Union[str, Path], create_signature, remove_duplicates
 
             for k in self.rf_shim_library.data:
                 shim_vector_length = len(self.rf_shim_library.data[k])
-                id_format_str = '{:.0f} {:.0f}' + shim_vector_length * '{:12g}' + '\n'
+                id_format_str = '{:d} {:d}' + ''.join(' {:g}' for _ in range(shim_vector_length)) + '\n'
                 s = id_format_str.format(k, int(0.5 * shim_vector_length), *self.rf_shim_library.data[k])
                 output_file.write(s)
             output_file.write('\n')
