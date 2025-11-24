@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 
 
-def make_rotation(shim_vec: np.ndarray) -> SimpleNamespace:
+def make_rf_shim(shim_vec: np.ndarray) -> SimpleNamespace:
     """
     Create an event describing RF shimming in the current block.
 
