@@ -29,11 +29,23 @@ def main():
     # RF preparatory, excitation
     # =========
     flip_exc = 12 * pi / 180
-    rf = pp.make_block_pulse(flip_angle=flip_exc, system=system, duration=250e-6, time_bw_product=4, use='excitation')
+    rf = pp.make_gauss_pulse(
+        flip_angle=flip_exc, 
+        system=system, 
+        duration=250e-6, 
+        time_bw_product=4, 
+        use='excitation',
+    )
+    bw = pp.calc_rf_bandwidth(rf, dt=system.rf_raster_time)
+    print(bw[0])
+    print(4 / 250e-6)
     
-    flip_prep = 90 * pi / 180
+    flip_prep = 180 * pi / 180
     rf_prep = pp.make_block_pulse(
-        flip_angle=flip_prep, system=system, duration=500e-6, time_bw_product=4, use='preparation'
+        flip_angle=flip_prep, 
+        system=system, 
+        duration=1000e-6, 
+        use='preparation',
     )
     
     # =========
