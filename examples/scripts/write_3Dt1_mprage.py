@@ -53,7 +53,8 @@ def main():
     # =========
     delta_k = 1 / fov
     k_width = Nx * delta_k
-    readout_time = 3.5e-3
+    dwell = 10e-6
+    readout_time = Nx * dwell
     gx = pp.make_trapezoid(channel='x', system=system, flat_area=k_width, flat_time=readout_time)
     adc = pp.make_adc(num_samples=Nx, duration=gx.flat_time, delay=gx.rise_time)
     
