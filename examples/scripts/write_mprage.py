@@ -146,6 +146,7 @@ def main(plot: bool = False, write_seq: bool = False, seq_filename: str = 'mprag
     # Sequence
     for j in range(N[ax.n3]):
         seq.add_block(rf180)
+        TI_delay = 0.1e-3
         seq.add_block(pp.make_delay(TI_delay), gsl_sp)
         rf_phase = 0
         rf_inc = 0
@@ -172,6 +173,7 @@ def main(plot: bool = False, write_seq: bool = False, seq_filename: str = 'mprag
                     label_inc_par,
                 )
             seq.add_block(adc, gro1, pp.scale_grad(grad=gpe1, scale=pe1_steps[i]), gpe2je)
+        TR_out_delay = 0.1e-3
         seq.add_block(gro_Sp, pp.make_delay(TR_out_delay), label_reset_par, label_inc_lin)
 
     # ======

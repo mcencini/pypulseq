@@ -224,6 +224,7 @@ def main(plot: bool = False, write_seq: bool = False, seq_filename: str = 'tse_p
         warnings.warn(f'TR too short, adapted to include all slices to: {1000 * n_slices * (TE_train + TR_fill)} ms')
     else:
         print(f'TR fill: {1000 * TR_fill} ms')
+    TR_fill = 0.1e-3
     delay_TR = pp.make_delay(TR_fill)
 
     # ======
