@@ -10,7 +10,7 @@ from pypulseq.calc_rf_center import calc_rf_center
 from pypulseq.compress_shape import compress_shape
 from pypulseq.decompress_shape import decompress_shape
 from pypulseq.event_lib import EventLibrary
-from pypulseq.supported_labels_rf_use import get_supported_labels
+from pypulseq.supported_labels_rf_use import add_supported_label, get_supported_labels
 
 
 def read(self, path: str, detect_rf_use: Union[bool, None] = None, remove_duplicates: bool = True) -> None:
@@ -200,14 +200,9 @@ def read(self, path: str, detect_rf_use: Union[bool, None] = None, remove_duplic
                     return int(s)
 
                 def l2(s):
-                    labels = get_supported_labels()
-                    if s not in labels:
-                        input_file.close()
-                        raise ValueError(
-                            f'Unknown label {s!r} encountered while reading the file. '
-                            'Register it first with pypulseq.add_supported_label().'
-                        )
-                    return labels.index(s) + 1
+                    if s not in get_supported_labels():
+                        add_supported_label(s)
+                    return get_supported_labels().index(s) + 1
 
                 self.label_set_library = __read_and_parse_events(input_file, l1, l2)
             elif section[:18] == 'extension LABELINC':
@@ -218,14 +213,9 @@ def read(self, path: str, detect_rf_use: Union[bool, None] = None, remove_duplic
                     return int(s)
 
                 def l2(s):
-                    labels = get_supported_labels()
-                    if s not in labels:
-                        input_file.close()
-                        raise ValueError(
-                            f'Unknown label {s!r} encountered while reading the file. '
-                            'Register it first with pypulseq.add_supported_label().'
-                        )
-                    return labels.index(s) + 1
+                    if s not in get_supported_labels():
+                        add_supported_label(s)
+                    return get_supported_labels().index(s) + 1
 
                 self.label_inc_library = __read_and_parse_events(input_file, l1, l2)
             elif section[:16] == 'extension DELAYS':

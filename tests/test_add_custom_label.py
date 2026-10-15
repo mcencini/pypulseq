@@ -95,12 +95,12 @@ def test_custom_label_roundtrip(tmp_path):
     assert labels[1].value == 1
 
 
-def test_read_unregistered_label_error(tmp_path):
-    """Reading a file with an unregistered label must fail with a helpful message."""
+def test_read_registers_unknown_label(tmp_path):
+    """Reading a file with an unregistered label must register it automatically."""
     add_supported_label('GHOST')
 
     seq = pp.Sequence()
-    seq.add_block(pp.make_label('GHOST', 'SET', 1), pp.make_delay(1e-3))
+    seq.add_block(pp.make_label('GHOST', 'SET', 1), pp.make_label('GHOST', 'INC', 2), pp.make_delay(1e-3))
     path = tmp_path / 'ghost.seq'
     seq.write(path)
 
@@ -108,5 +108,10 @@ def test_read_unregistered_label_error(tmp_path):
     _SUPPORTED_LABELS.remove('GHOST')
 
     seq2 = pp.Sequence()
-    with pytest.raises(ValueError, match='add_supported_label'):
-        seq2.read(path)
+    seq2.read(path)
+    assert get_supported_labels().count('GHOST') == 1
+    labels = seq2.get_block(1).label
+    assert labels[0].label == 'GHOST'
+    assert labels[0].value == 1
+    assert labels[1].label == 'GHOST'
+    assert labels[1].value == 2
